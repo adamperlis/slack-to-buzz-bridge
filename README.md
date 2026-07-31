@@ -366,6 +366,11 @@ Fly.io (`fly.toml`) and Railway (`railway.json`) are in the repo root too.
 On all three platforms the bridge auto-detects its public URL, so
 `PUBLIC_BASE_URL` never needs typing.
 
+For the **$0 route**, `deploy/oci/` is a complete Oracle Cloud Resource
+Manager stack (upload, fill a form, Apply — it builds the free ARM
+instance, firewall, TLS, and bridge in one shot), and
+`deploy/setup-vps.sh` bootstraps any ordinary Ubuntu VPS in one command.
+
 Nobody hosts this for you: every team runs its own bridge, so your Slack
 tokens and message traffic never touch anyone else's servers.
 **[docs/HOSTING.md](docs/HOSTING.md)** compares the realistic options —

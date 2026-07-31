@@ -1,0 +1,84 @@
+# Oracle Resource Manager UI schema — renders a friendly form for the stack.
+title: "Slack-to-Buzz Bridge (Always Free ARM)"
+description: "Deploys the bridge on an Always Free Ampere A1 instance: network, firewall, Docker, Caddy TLS, and the bridge itself. You supply your Slack app credentials and Buzz relay URL."
+schemaVersion: 1.1.0
+version: "1.0"
+locale: "en"
+
+variableGroups:
+  - title: "Placement"
+    variables:
+      - compartment_ocid
+      - availability_domain_number
+  - title: "Access"
+    variables:
+      - ssh_public_key
+      - bridge_domain
+  - title: "Slack app credentials"
+    variables:
+      - slack_client_id
+      - slack_client_secret
+      - slack_signing_secret
+  - title: "Buzz"
+    variables:
+      - buzz_relay_url
+  - title: "Optional"
+    variables:
+      - slack_allowed_teams
+      - instance_ocpus
+      - instance_memory_gb
+
+variables:
+  tenancy_ocid:
+    visible: false
+  region:
+    visible: false
+  compartment_ocid:
+    type: oci:identity:compartment:id
+    title: "Compartment"
+    required: true
+  availability_domain_number:
+    type: integer
+    title: "Availability domain (1-3)"
+    description: "Retry with a different number on 'Out of host capacity' errors."
+    minimum: 1
+    maximum: 3
+  ssh_public_key:
+    type: oci:core:ssh:publickey
+    title: "SSH public key"
+    required: true
+  bridge_domain:
+    type: string
+    title: "Bridge domain (e.g. bridge.example.com)"
+    required: true
+  slack_client_id:
+    type: password
+    title: "Slack Client ID"
+    required: true
+  slack_client_secret:
+    type: password
+    title: "Slack Client Secret"
+    required: true
+  slack_signing_secret:
+    type: password
+    title: "Slack Signing Secret"
+    required: true
+  buzz_relay_url:
+    type: string
+    title: "Buzz relay WebSocket URL (wss://…)"
+    required: true
+  slack_allowed_teams:
+    type: string
+    title: "Allowed Slack team IDs (comma-separated, empty = anyone)"
+  instance_ocpus:
+    type: integer
+    title: "OCPUs"
+  instance_memory_gb:
+    type: integer
+    title: "Memory (GB)"
+
+outputs:
+  public_ip:
+    title: "Bridge public IP"
+  next_steps:
+    title: "Next steps"

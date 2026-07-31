@@ -52,23 +52,21 @@ Works on Hetzner (~€4/mo), DigitalOcean, Vultr, AWS Lightsail, or any
 Ubuntu/Debian box. You need a domain (or subdomain) pointed at the
 server's IP — an `A` record like `bridge.yourdomain.com → <server-ip>`.
 
+The bootstrap script does the mechanical parts (Docker install, clone,
+`.env` scaffold with a generated master key):
+
 ```bash
-# 1. Install Docker
-curl -fsSL https://get.docker.com | sudo sh
-
-# 2. Get the code and configure
-git clone https://github.com/adamperlis/slack-to-buzz-bridge.git
-cd slack-to-buzz-bridge
-cp .env.example .env && chmod 600 .env
-nano .env   # fill in Slack credentials, PUBLIC_BASE_URL, BUZZ_RELAY_URL, BRIDGE_MASTER_KEY
-
-# 3. Set your domain in the bridge-only Caddyfile
-nano deploy/Caddyfile.bridge-only   # replace bridge.example.com
-
-# 4. Launch (Caddy fetches a Let's Encrypt certificate automatically)
-cd deploy
-docker compose -f docker-compose.bridge-only.yml up -d --build
+curl -fsSL https://raw.githubusercontent.com/adamperlis/slack-to-buzz-bridge/main/deploy/setup-vps.sh | sudo bash
+sudo nano /opt/slack-buzz/.env                        # Slack creds, PUBLIC_BASE_URL, BUZZ_RELAY_URL
+sudo nano /opt/slack-buzz/deploy/Caddyfile.bridge-only # your domain
+cd /opt/slack-buzz/deploy && sudo docker compose -f docker-compose.bridge-only.yml up -d --build
 ```
+
+(Prefer doing it by hand? The script's steps are exactly: install Docker
+via get.docker.com, clone the repo to `/opt/slack-buzz`, copy
+`.env.example` → `.env` with a generated `BRIDGE_MASTER_KEY`, then the
+compose command above. Caddy fetches the Let's Encrypt certificate
+automatically once your DNS points at the server.)
 
 Then finish the Slack app setup from the README's beginner guide using
 `https://bridge.yourdomain.com` as your address. Check health with
@@ -81,13 +79,20 @@ tokens inside are encrypted, so backups are useless without your
 
 ## Option B — Oracle Cloud Always Free ($0)
 
-The full walkthrough, including Oracle's firewall traps and the co-hosted
-Buzz stack, is in [`deploy/oci-setup.md`](../deploy/oci-setup.md). Summary:
-upgrade the account to Pay As You Go (still $0 within free limits, avoids
-idle reclamation), open ports 80/443 in both the VCN security list and the
-VM's iptables, install Docker, and run the compose stack. Expect capacity
-retries when launching the free ARM instance, and note the free allowance
-shrank to ~2 OCPU / 12 GB in mid-2026.
+**The automated path:** [`deploy/oci/`](../deploy/oci/) is a complete
+Resource Manager stack — upload it as a zip in the OCI console (Resource
+Manager → Stacks → Create Stack), fill in a form with your Slack
+credentials and domain, click Apply, and it provisions the network,
+firewall rules, Always Free A1 instance, Docker, TLS, and the bridge in
+one shot. Details in [`deploy/oci/README.md`](../deploy/oci/README.md).
+
+**The manual path** (also required if co-hosting Buzz on the instance):
+the full walkthrough, including Oracle's firewall traps, is in
+[`deploy/oci-setup.md`](../deploy/oci-setup.md). Either way: upgrade the
+account to Pay As You Go (still $0 within free limits, avoids idle
+reclamation), expect capacity retries when launching the free ARM
+instance, and note the free allowance shrank to ~2 OCPU / 12 GB in
+mid-2026.
 
 ## Option C — Render (managed, easiest — one-click)
 

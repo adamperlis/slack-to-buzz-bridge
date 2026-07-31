@@ -1,0 +1,43 @@
+#cloud-config
+package_update: true
+packages:
+  - git
+
+write_files:
+  - path: /opt/slack-buzz-env
+    permissions: "0600"
+    content: |
+      PORT=3000
+      SLACK_CLIENT_ID=${slack_client_id}
+      SLACK_CLIENT_SECRET=${slack_client_secret}
+      SLACK_SIGNING_SECRET=${slack_signing_secret}
+      PUBLIC_BASE_URL=https://${bridge_domain}
+      BUZZ_RELAY_URL=${buzz_relay_url}
+      BRIDGE_MASTER_KEY=${bridge_master_key}
+      SLACK_ALLOWED_TEAMS=${slack_allowed_teams}
+      BRIDGE_KEY_MODE=single
+      BRIDGE_DB=/app/data/bridge.sqlite
+  - path: /opt/slack-buzz-caddyfile
+    permissions: "0644"
+    content: |
+      ${bridge_domain} {
+      	reverse_proxy /slack/* bridge:3000
+      	reverse_proxy /login bridge:3000
+      	reverse_proxy /healthz bridge:3000
+      	respond 404
+      }
+
+runcmd:
+  # Oracle Ubuntu images REJECT all inbound except SSH; insert ACCEPTs
+  # above the REJECT rule and persist. (Never use UFW on OCI Ubuntu.)
+  - iptables -I INPUT 6 -m state --state NEW -p tcp --dport 80 -j ACCEPT
+  - iptables -I INPUT 6 -m state --state NEW -p tcp --dport 443 -j ACCEPT
+  - iptables -I INPUT 6 -m state --state NEW -p udp --dport 443 -j ACCEPT
+  - netfilter-persistent save
+  # Docker (official repo, native arm64)
+  - curl -fsSL https://get.docker.com | sh
+  # The bridge
+  - git clone https://github.com/adamperlis/slack-to-buzz-bridge.git /opt/slack-buzz
+  - mv /opt/slack-buzz-env /opt/slack-buzz/.env
+  - mv /opt/slack-buzz-caddyfile /opt/slack-buzz/deploy/Caddyfile.bridge-only
+  - cd /opt/slack-buzz/deploy && docker compose -f docker-compose.bridge-only.yml up -d --build
