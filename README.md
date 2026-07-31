@@ -162,15 +162,28 @@ the matching thread on the other side.
 | Buzz messages don't reach Slack | Mapping missing, or the bot was never invited to the Slack channel |
 | Bridge exits immediately at start | A required `.env` value is missing — the error message names it |
 
-## Deployment
+## Deployment — you host it yourself
 
-The `deploy/` directory contains the full co-hosted stack for an Oracle
-Cloud Always Free ARM instance: `Dockerfile` (arm64-native),
-`docker-compose.yml` (Caddy + bridge + Buzz's relay/Postgres/Redis/MinIO
-tier, with only Caddy exposed), `Caddyfile`, and `oci-setup.md` — a
-step-by-step guide covering OCI's firewall traps, Docker port-publishing
-pitfalls, and the lockdown verification gate. The deeper reasoning lives in
-`docs/ARCHITECTURE-RESEARCH.md`.
+Nobody hosts this for you: every team runs its own bridge, so your Slack
+tokens and message traffic never touch anyone else's servers.
+**[docs/HOSTING.md](docs/HOSTING.md)** compares the realistic options —
+any $4–6/mo VPS with Docker (recommended default), Oracle Cloud's Always
+Free tier ($0), and managed platforms (Render, Fly.io, Railway) — and
+explains the three hard requirements (always-on process, persistent disk,
+public HTTPS) that rule out serverless hosts and sleeping free tiers.
+
+The `deploy/` directory has everything ready to run:
+
+- `docker-compose.bridge-only.yml` + `Caddyfile.bridge-only` — standalone
+  bridge for teams whose Buzz hive lives elsewhere
+- `docker-compose.yml` + `Caddyfile` — full co-hosted stack (Caddy +
+  bridge + Buzz's relay/Postgres/Redis/MinIO tier, only Caddy exposed)
+- `Dockerfile` — arm64-native container build
+- `oci-setup.md` — step-by-step Oracle Cloud guide, covering OCI's
+  firewall traps, Docker port-publishing pitfalls, and the lockdown
+  verification gate
+
+The deeper reasoning lives in `docs/ARCHITECTURE-RESEARCH.md`.
 
 ## Configuration reference
 

@@ -1,0 +1,7 @@
+# Standalone bridge Caddyfile. Replace bridge.example.com with your domain.
+bridge.example.com {
+	reverse_proxy /slack/* bridge:3000
+	reverse_proxy /login bridge:3000
+	reverse_proxy /healthz bridge:3000
+	respond 404
+}
