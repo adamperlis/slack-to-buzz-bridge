@@ -14,8 +14,10 @@ reproduction steps and an assessment of impact.
 Deployers should understand these properties of the bridge:
 
 - **Slack bot tokens** (`xoxb-`) for every installed workspace are stored in
-  `database.json` on the host. Protect that file (restrictive permissions,
-  encrypted disk/backups) and never commit it.
+  SQLite **encrypted with AES-256-GCM**, each ciphertext bound to its
+  workspace id. The encryption defends leaked database files and backups —
+  it does **not** defend a fully compromised host, where `BRIDGE_MASTER_KEY`
+  is also readable. Protect `.env` (mode 600) and never commit it.
 - **Relay privacy is the deployer's responsibility.** Any message bridged to
   a public Nostr relay is world-readable, permanently. Point
   `NOSTR_RELAY_URL` at a relay you control, and note that a write-whitelisted

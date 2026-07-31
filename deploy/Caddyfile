@@ -1,0 +1,17 @@
+# Automatic HTTPS via Let's Encrypt. Replace domains with yours.
+
+# Public face of the bridge: Slack OAuth + Events API + landing page.
+bridge.example.com {
+	reverse_proxy /slack/* bridge:3000
+	reverse_proxy /login bridge:3000
+	reverse_proxy /healthz bridge:3000
+
+	# Everything else 404s — the bridge has no other public surface.
+	respond 404
+}
+
+# Your team's Buzz clients connect here. buzz-relay enforces NIP-42 auth +
+# NIP-29 membership itself; TLS termination and WebSocket proxying only.
+buzz.example.com {
+	reverse_proxy buzz-relay:8080
+}

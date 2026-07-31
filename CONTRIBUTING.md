@@ -17,25 +17,22 @@ Node.js 18+ is required (the project uses native ESM, `fetch`, and
 
 ## Testing your changes
 
-There is no external-service dependency for basic validation — the server can
-be exercised against a mock local Nostr relay (a small `ws` server that
-answers `REQ` with `EOSE` and accepts `EVENT`) and fake Slack credentials.
-At minimum, before opening a PR:
-
-1. `node --check server.js` passes.
-2. The server boots against a local relay, serves `/login`, `/slack/install`,
-   and `/healthz`, and opens a relay subscription when `database.json`
-   contains at least one channel mapping.
+`npm test` runs the whole suite with no external-service dependency: unit
+tests for crypto/formatting/persistence plus an integration test that boots
+the real server against a mock NIP-29 relay (AUTH challenge, h-tag
+enforcement, unknown-parent rejection) and a mock Slack API. All tests must
+pass before opening a PR; add coverage for any new pipeline behavior.
 
 ## Guidelines
 
-- Keep the echo-loop prevention rules intact: never rebroadcast events signed
-  by the bridge's own pubkey, messages prefixed `[Slack -`, or Slack messages
-  carrying `bot_id`/`bot_message`. Extensions must preserve all three guards.
-- Secrets never enter git: `.env` and `database.json` are git-ignored — keep
-  it that way. Mock values in examples must be obviously fake.
-- Match the existing code style (single-file server, plain ESM, no
-  TypeScript build step).
+- Keep the echo-loop prevention rules intact: never rebroadcast events
+  signed by bridge-held keys (bridge identity or derived per-user keys),
+  messages prefixed `[Slack -`, or Slack messages carrying
+  `bot_id`/`bot_message`. Extensions must preserve all of these guards.
+- Secrets never enter git: `.env` and `data/` are git-ignored — keep it
+  that way. Mock values in examples and tests must be obviously fake.
+- Match the existing code style (plain ESM modules under `src/`, no
+  TypeScript build step, prepared statements for all SQL).
 - One logical change per PR, with a clear description of the behavior change
   and how you verified it.
 

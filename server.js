@@ -1,184 +1,137 @@
 import 'dotenv/config';
-import fs from 'fs';
+import fs from 'node:fs';
+import path from 'node:path';
 import pkg from '@slack/bolt';
-import { finalizeEvent, getPublicKey } from 'nostr-tools/pure';
-import { Relay, useWebSocketImplementation } from 'nostr-tools/relay';
-import WebSocket from 'ws';
+import { getPublicKey } from 'nostr-tools/pure';
+import { loadMasterKey, encryptSecret, decryptSecret, deriveUserKey } from './src/crypto.js';
+import { BridgeDB } from './src/db.js';
+import { slackMessageToPlain } from './src/slack-format.js';
+import { BuzzClient } from './src/nostr.js';
 
 const { App, ExpressReceiver } = pkg;
 
-// nostr-tools has no native WebSocket in Node — wire in the `ws` implementation.
-useWebSocketImplementation(WebSocket);
-
 // ---------------------------------------------------------------------------
-// Startup validation — fail fast on missing/invalid configuration
+// Configuration — fail fast on anything missing or malformed
 // ---------------------------------------------------------------------------
 const REQUIRED_ENV = [
-  'SLACK_CLIENT_ID',
-  'SLACK_CLIENT_SECRET',
-  'SLACK_SIGNING_SECRET',
-  'REDIRECT_URI',
-  'NOSTR_RELAY_URL',
-  'BUZZ_BRIDGE_SECRET_KEY',
+  'SLACK_CLIENT_ID', 'SLACK_CLIENT_SECRET', 'SLACK_SIGNING_SECRET',
+  'PUBLIC_BASE_URL', 'BUZZ_RELAY_URL', 'BRIDGE_MASTER_KEY',
 ];
+// Back-compat aliases from the v1 flat-file era.
+process.env.PUBLIC_BASE_URL ||= process.env.REDIRECT_URI;
+process.env.BUZZ_RELAY_URL ||= process.env.NOSTR_RELAY_URL;
+process.env.BRIDGE_MASTER_KEY ||= process.env.BUZZ_BRIDGE_SECRET_KEY;
+
 const missing = REQUIRED_ENV.filter((k) => !process.env[k]);
 if (missing.length) {
   console.error(`Missing required environment variables: ${missing.join(', ')}`);
   process.exit(1);
 }
-if (!/^[0-9a-f]{64}$/i.test(process.env.BUZZ_BRIDGE_SECRET_KEY)) {
-  console.error('BUZZ_BRIDGE_SECRET_KEY must be a 32-byte hex string (64 hex characters).');
-  process.exit(1);
-}
 
-const PUBLIC_BASE_URL = process.env.REDIRECT_URI.replace(/\/+$/, '');
-const bridgePrivKey = Uint8Array.from(Buffer.from(process.env.BUZZ_BRIDGE_SECRET_KEY, 'hex'));
-let bridgePubKey;
+let masterKey;
 try {
-  bridgePubKey = getPublicKey(bridgePrivKey);
-} catch {
-  console.error('BUZZ_BRIDGE_SECRET_KEY is not a valid secp256k1 private key.');
+  masterKey = loadMasterKey(process.env.BRIDGE_MASTER_KEY);
+} catch (e) {
+  console.error(e.message);
   process.exit(1);
 }
 
-// ---------------------------------------------------------------------------
-// Helper database operations (flat-file JSON, multi-tenant relational dicts)
-// ---------------------------------------------------------------------------
-const DB_FILE = 'database.json';
-const EMPTY_DB = { workspaces: {}, channel_mappings: {}, channel_teams: {}, user_directory: {} };
+const PUBLIC_BASE_URL = process.env.PUBLIC_BASE_URL.replace(/\/+$/, '');
+const KEY_MODE = process.env.BRIDGE_KEY_MODE === 'per-user' ? 'per-user' : 'single';
+const DB_PATH = process.env.BRIDGE_DB || './data/bridge.sqlite';
+const SCOPES = ['chat:write', 'channels:history', 'channels:read', 'groups:history', 'users:read'];
 
-function readDB() {
-  if (!fs.existsSync(DB_FILE)) return structuredClone(EMPTY_DB);
+// The bridge's own Nostr identity is derived from the master key, so one
+// secret drives token encryption, NIP-42 auth, and message signing.
+const bridgeKey = deriveUserKey(masterKey, '__bridge__');
+const bridgePubkey = getPublicKey(bridgeKey);
+
+fs.mkdirSync(path.dirname(DB_PATH), { recursive: true });
+const db = new BridgeDB(DB_PATH);
+
+// ---------------------------------------------------------------------------
+// One-time migration from the v1 database.json flat file
+// ---------------------------------------------------------------------------
+const LEGACY_DB = 'database.json';
+if (fs.existsSync(LEGACY_DB)) {
   try {
-    const db = JSON.parse(fs.readFileSync(DB_FILE, 'utf8'));
-    return { ...structuredClone(EMPTY_DB), ...db };
+    const legacy = JSON.parse(fs.readFileSync(LEGACY_DB, 'utf8'));
+    for (const [teamId, ws] of Object.entries(legacy.workspaces || {})) {
+      if (!db.getWorkspace(teamId)) {
+        db.saveWorkspace(teamId, encryptSecret(masterKey, ws.bot_token, teamId), ws.bot_id ?? null, ws.bot_user_id ?? null);
+      }
+    }
+    const teams = Object.keys(legacy.workspaces || {});
+    for (const [k, v] of Object.entries(legacy.channel_mappings || {})) {
+      if (k.startsWith('C') && !db.channelBySlack(k)) {
+        db.mapChannel(k, v, legacy.channel_teams?.[k] || teams[0] || 'unknown');
+      }
+    }
+    for (const [userId, name] of Object.entries(legacy.user_directory || {})) {
+      db.saveUser({ slackUserId: userId, displayName: name });
+    }
+    fs.renameSync(LEGACY_DB, `${LEGACY_DB}.migrated`);
+    console.log('✅ Migrated legacy database.json → SQLite (renamed to database.json.migrated).');
   } catch (e) {
-    console.error(`Failed to parse ${DB_FILE}, refusing to clobber it:`, e.message);
-    throw e;
+    console.error('Legacy database.json migration failed (leaving file untouched):', e.message);
   }
 }
 
-function writeDB(db) {
-  // Write-then-rename keeps the file intact if the process dies mid-write.
-  const tmp = `${DB_FILE}.tmp`;
-  fs.writeFileSync(tmp, JSON.stringify(db, null, 2));
-  fs.renameSync(tmp, DB_FILE);
-}
-
-function saveWorkspace(teamId, botToken, botId, botUserId) {
-  const db = readDB();
-  db.workspaces[teamId] = { bot_token: botToken, bot_id: botId, bot_user_id: botUserId };
-  writeDB(db);
-}
-
-function getBotTokenByTeam(teamId) {
-  return readDB().workspaces[teamId]?.bot_token;
-}
-
-function rememberChannelTeam(channelId, teamId) {
-  if (!teamId) return;
-  const db = readDB();
-  if (db.channel_teams[channelId] === teamId) return;
-  db.channel_teams[channelId] = teamId;
-  writeDB(db);
-}
-
-const isBuzzHexId = (id) => /^[0-9a-f]{64}$/i.test(id);
-
 // ---------------------------------------------------------------------------
-// Emoji + Slack mrkdwn normalization (Slack ➔ Buzz plain text)
-// ---------------------------------------------------------------------------
-const EMOJI_MAP = {
-  smile: '😄', smiley: '😃', grin: '😁', joy: '😂', laughing: '😆',
-  slightly_smiling_face: '🙂', wink: '😉', blush: '😊', sunglasses: '😎',
-  thinking_face: '🤔', neutral_face: '😐', cry: '😢', sob: '😭', angry: '😠',
-  scream: '😱', heart: '❤️', broken_heart: '💔', '+1': '👍', thumbsup: '👍',
-  '-1': '👎', thumbsdown: '👎', ok_hand: '👌', wave: '👋', clap: '👏',
-  raised_hands: '🙌', pray: '🙏', muscle: '💪', point_up: '☝️',
-  point_right: '👉', point_left: '👈', point_down: '👇', eyes: '👀',
-  fire: '🔥', tada: '🎉', rocket: '🚀', sparkles: '✨', star: '⭐',
-  '100': '💯', white_check_mark: '✅', heavy_check_mark: '✔️', x: '❌',
-  warning: '⚠️', question: '❓', exclamation: '❗', bulb: '💡', memo: '📝',
-  calendar: '📅', bell: '🔔', lock: '🔒', key: '🔑', link: '🔗', mag: '🔍',
-  chart_with_upwards_trend: '📈', chart_with_downwards_trend: '📉',
-  moneybag: '💰', dollar: '💵', gift: '🎁', bug: '🐛', wrench: '🔧',
-  hammer: '🔨', gear: '⚙️', package: '📦', books: '📚', phone: '📞',
-  envelope: '✉️', email: '📧', computer: '💻', coffee: '☕', beer: '🍺',
-  pizza: '🍕', zzz: '💤', shrug: '🤷', facepalm: '🤦', skull: '💀',
-  handshake: '🤝', speech_balloon: '💬', hourglass: '⌛', check: '✅',
-};
-
-function transformEmojis(text) {
-  // Known shortcodes become unicode; unknown/custom ones are stripped so
-  // Buzz never renders raw :something_custom: noise.
-  return text.replace(/:([a-z0-9_+\-]+):/gi, (match, code) => {
-    const key = code.toLowerCase();
-    if (EMOJI_MAP[key]) return EMOJI_MAP[key];
-    // Skin-tone modifiers ride along with a base emoji — drop them silently.
-    if (/^skin-tone-\d$/.test(key)) return '';
-    return '';
-  });
-}
-
-function slackTextToPlain(text, db) {
-  return text
-    .replace(/<@([UW][A-Z0-9]+)(?:\|[^>]*)?>/g, (m, id) => `@${db.user_directory[id] || id}`)
-    .replace(/<#[A-Z0-9]+\|([^>]+)>/g, '#$1')
-    .replace(/<!(channel|here|everyone)(?:\|[^>]*)?>/g, '@$1')
-    .replace(/<(https?:\/\/[^|>]+)\|([^>]+)>/g, '$2 ($1)')
-    .replace(/<(https?:\/\/[^>]+)>/g, '$1')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&amp;/g, '&');
-}
-
-// ---------------------------------------------------------------------------
-// 1. Multi-tenant Slack OAuth Express receiver
+// Multi-tenant Slack OAuth receiver (HTTP Events API transport)
 // ---------------------------------------------------------------------------
 const receiver = new ExpressReceiver({
   signingSecret: process.env.SLACK_SIGNING_SECRET,
   clientId: process.env.SLACK_CLIENT_ID,
   clientSecret: process.env.SLACK_CLIENT_SECRET,
   stateSecret: process.env.SLACK_STATE_SECRET || 'nostr-bridge-v1-auth-handshake',
-  scopes: ['chat:write', 'channels:history', 'channels:read', 'groups:history', 'users:read'],
+  scopes: SCOPES,
   redirectUri: `${PUBLIC_BASE_URL}/slack/oauth_redirect`,
-  installerOptions: {
-    redirectUriPath: '/slack/oauth_redirect',
-  },
+  installerOptions: { redirectUriPath: '/slack/oauth_redirect' },
   installationStore: {
     storeInstallation: async (installation) => {
       const teamId = installation.team?.id || installation.enterprise?.id;
-      saveWorkspace(teamId, installation.bot.token, installation.bot.id, installation.bot.userId);
+      db.saveWorkspace(
+        teamId,
+        encryptSecret(masterKey, installation.bot.token, teamId),
+        installation.bot.id,
+        installation.bot.userId
+      );
       console.log(`✅ Workspace installed: ${teamId}`);
     },
     fetchInstallation: async (installQuery) => {
-      const db = readDB();
-      const workspace = db.workspaces[installQuery.teamId];
-      if (!workspace) throw new Error('No install sequence matches this profile.');
+      const ws = db.getWorkspace(installQuery.teamId);
+      if (!ws) throw new Error('No installation found for this workspace.');
       return {
         team: { id: installQuery.teamId },
         enterprise: undefined,
         bot: {
-          token: workspace.bot_token,
-          id: workspace.bot_id,
-          userId: workspace.bot_user_id,
-          scopes: ['chat:write', 'channels:history', 'channels:read', 'groups:history', 'users:read'],
+          token: decryptSecret(masterKey, ws.bot_token_enc, installQuery.teamId),
+          id: ws.bot_id,
+          userId: ws.bot_user_id,
+          scopes: SCOPES,
         },
       };
     },
-    deleteInstallation: async (installQuery) => {
-      const db = readDB();
-      delete db.workspaces[installQuery.teamId];
-      writeDB(db);
-    },
+    deleteInstallation: async (installQuery) => db.deleteWorkspace(installQuery.teamId),
   },
 });
 
-const slackApp = new App({ receiver });
+// SLACK_API_URL is a test hook: integration tests point it at a mock Slack
+// API server. Unset in production, so the SDK uses slack.com.
+const slackApp = new App({
+  receiver,
+  ...(process.env.SLACK_API_URL ? { clientOptions: { slackApiUrl: process.env.SLACK_API_URL } } : {}),
+});
+
+function botTokenForTeam(teamId) {
+  const ws = teamId ? db.getWorkspace(teamId) : db.firstWorkspace();
+  if (!ws) return undefined;
+  return decryptSecret(masterKey, ws.bot_token_enc, ws.team_id);
+}
 
 // ---------------------------------------------------------------------------
-// 2. OAuth frontend — "Add to Slack" landing page
-//    Links to Bolt's own /slack/install so the state param is handled for us.
+// OAuth landing page + health endpoint
 // ---------------------------------------------------------------------------
 receiver.app.get('/login', (req, res) => {
   res.send(`
@@ -186,8 +139,8 @@ receiver.app.get('/login', (req, res) => {
       <head><title>Connect Slack to Buzz</title></head>
       <body style="font-family:sans-serif; text-align:center; padding-top:100px; background:#f4f7f6;">
         <div style="background:white; padding:40px; display:inline-block; border-radius:8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
-          <h2>Connect Slack Connect to your Buzz Workspace</h2>
-          <p style="color:#666; margin-bottom:30px;">Grant permissions to automate seamless, zero-cost cross-channel pipelines.</p>
+          <h2>Connect your Slack workspace to Buzz</h2>
+          <p style="color:#666; margin-bottom:30px;">Grant permissions to bridge shared channels into your Buzz hive.</p>
           <a href="/slack/install">
             <img alt="Add to Slack" height="40" width="139"
               src="https://platform.slack-edge.com/img/add_to_slack.png"
@@ -199,204 +152,165 @@ receiver.app.get('/login', (req, res) => {
   `);
 });
 
-receiver.app.get('/healthz', (req, res) => res.json({ ok: true }));
+receiver.app.get('/healthz', (req, res) =>
+  res.json({ ok: true, relay: buzz.relay?.connected ?? false, channels: db.allChannels().length })
+);
 
 // ---------------------------------------------------------------------------
-// Nostr relay connection (with reconnect + resubscribe)
+// Outbound pipeline (Buzz ➔ Slack), invoked per subscribed relay event
 // ---------------------------------------------------------------------------
-let relay = null;
+async function handleBuzzEvent(event) {
+  // Echo-loop prevention, rigidly enforced in this order:
+  // 1. anything signed by the bridge's own identity
+  if (event.pubkey === bridgePubkey) return;
+  // 2. anything signed by a bridge-derived per-user key
+  if (db.userByPubkey(event.pubkey)) return;
+  // 3. the legacy content-prefix contract
+  if (event.content.startsWith('[Slack -')) return;
 
-async function connectRelay() {
-  let attempt = 0;
-  for (;;) {
-    try {
-      relay = await Relay.connect(process.env.NOSTR_RELAY_URL);
-      console.log(`🔌 Connected to Nostr relay ${process.env.NOSTR_RELAY_URL}`);
-      relay.onclose = () => {
-        console.warn('Relay connection closed — reconnecting…');
-        setTimeout(async () => {
-          await connectRelay();
-          synchronizeBuzzTracks();
-        }, 2000);
-      };
-      return;
-    } catch (e) {
-      const delay = Math.min(30000, 2000 * 2 ** attempt++);
-      console.error(`Relay connect failed (${e.message}), retrying in ${delay / 1000}s`);
-      await new Promise((r) => setTimeout(r, delay));
-    }
-  }
-}
+  const hTag = event.tags.find((t) => t[0] === 'h');
+  if (!hTag) return;
+  const mapping = db.channelByBuzz(hTag[1]);
+  if (!mapping) return;
 
-// ---------------------------------------------------------------------------
-// 3. Inbound pipeline (Slack ➔ Buzz)
-// ---------------------------------------------------------------------------
-slackApp.message(async ({ message, client, context }) => {
-  // Infinite echo loop prevention — never rebroadcast bot traffic.
-  if (message.bot_id || message.subtype === 'bot_message') return;
-  if (!message.text) return; // file-only / join messages carry no text
-
-  const db = readDB();
-  const targetBuzzHexRoom = db.channel_mappings[message.channel];
-  if (!targetBuzzHexRoom) return; // discard traffic if unmapped
-
-  // Record which workspace owns this channel so outbound replies can route back.
-  rememberChannelTeam(message.channel, context.teamId || message.team);
-
-  // Resolve a human-readable username so attribution survives inside Buzz.
-  let username = message.user;
-  if (db.user_directory[message.user]) {
-    username = db.user_directory[message.user];
-  } else {
-    try {
-      const userProfile = await client.users.info({ user: message.user });
-      username = userProfile.user.real_name || userProfile.user.name;
-      const fresh = readDB();
-      fresh.user_directory[message.user] = username;
-      writeDB(fresh);
-    } catch (e) {
-      console.error('Failed to profile user:', e.message);
-    }
-  }
-
-  const cleanText = transformEmojis(slackTextToPlain(message.text, readDB()));
-
-  // Wrap text into a standard Nostr kind-1 cryptographic event frame.
-  const eventTemplate = {
-    kind: 1,
-    created_at: Math.floor(Date.now() / 1000),
-    tags: [['e', targetBuzzHexRoom, '', 'root']],
-    content: `[Slack - ${username}]: ${cleanText}`,
-  };
-
-  try {
-    const signedEvent = finalizeEvent(eventTemplate, bridgePrivKey);
-    await relay.publish(signedEvent);
-  } catch (e) {
-    console.error('Nostr publish faulted:', e.message);
-  }
-});
-
-// ---------------------------------------------------------------------------
-// 4. Outbound pipeline (Buzz ➔ Slack)
-// ---------------------------------------------------------------------------
-let activeNostrSub = null;
-let subscribedMappingsSnapshot = '';
-
-function synchronizeBuzzTracks() {
-  if (activeNostrSub) {
-    activeNostrSub.close();
-    activeNostrSub = null;
-  }
-  if (!relay || !relay.connected) return;
-
-  const db = readDB();
-  subscribedMappingsSnapshot = JSON.stringify(db.channel_mappings);
-  const activeBuzzHexTargets = Object.keys(db.channel_mappings).filter(isBuzzHexId);
-  if (activeBuzzHexTargets.length === 0) {
-    console.log('No Buzz rooms mapped yet — outbound sync idle.');
+  const token = botTokenForTeam(mapping.team_id);
+  if (!token) {
+    console.error(`No bot token for team ${mapping.team_id} — cannot deliver Buzz event ${event.id}`);
     return;
   }
 
-  activeNostrSub = relay.subscribe(
-    [
-      {
-        kinds: [1],
-        '#e': activeBuzzHexTargets,
-        since: Math.floor(Date.now() / 1000),
-      },
-    ],
-    {
-      onevent: async (event) => {
-        // Escape loop echo traces: skip anything the bridge itself signed,
-        // plus the rigid [Slack - prefix contract.
-        if (event.pubkey === bridgePubKey) return;
-        if (event.content.startsWith('[Slack -')) return;
+  // Thread routing: a NIP-10 marked reply whose parent we bridged maps onto
+  // the parent's Slack thread. Unknown parents fall back to top-level.
+  let threadTs;
+  const replyTag = event.tags.find((t) => t[0] === 'e' && (t[3] === 'reply' || t[3] === 'root'));
+  if (replyTag) {
+    threadTs = db.slackRefForEventId(replyTag[1])?.slack_ts;
+  }
 
-        const targetRootTag = event.tags.find((t) => t[0] === 'e');
-        if (!targetRootTag) return;
+  // Attribution: kind:0 profile name, cached in SQLite.
+  let author = db.profileName(event.pubkey);
+  if (!author) {
+    author = (await buzz.fetchProfileName(event.pubkey)) || `npub…${event.pubkey.slice(0, 8)}`;
+    db.saveProfile(event.pubkey, author);
+  }
 
-        const dbInstance = readDB();
-        const targetSlackChannelId = dbInstance.channel_mappings[targetRootTag[1]];
-        if (!targetSlackChannelId) return;
-
-        // Route back out using the workspace that owns this Slack channel,
-        // falling back to the first installed workspace for single-tenant setups.
-        const teamId =
-          dbInstance.channel_teams[targetSlackChannelId] ||
-          Object.keys(dbInstance.workspaces)[0];
-        const activeToken = dbInstance.workspaces[teamId]?.bot_token;
-        if (!activeToken) return;
-
-        await slackApp.client.chat
-          .postMessage({
-            token: activeToken,
-            channel: targetSlackChannelId,
-            text: `*[Buzz Client]*: ${event.content}`,
-          })
-          .catch((err) => console.error('Outbound push execution faulted:', err.message));
-      },
-    }
-  );
-
-  console.log(`📡 Subscribed to ${activeBuzzHexTargets.length} Buzz room(s).`);
+  try {
+    const res = await slackApp.client.chat.postMessage({
+      token,
+      channel: mapping.slack_channel_id,
+      text: `*[Buzz] ${author}*: ${event.content}`,
+      ...(threadTs ? { thread_ts: threadTs } : {}),
+    });
+    // Record the posted message so Slack thread replies to it route back
+    // into this Buzz thread.
+    db.recordMessage(mapping.slack_channel_id, res.ts, event.id, 'b2s');
+  } catch (err) {
+    console.error('Buzz→Slack delivery faulted:', err.data?.error || err.message);
+  }
 }
 
-// Re-sync subscriptions when database.json is edited (new mappings added by
-// hand). The server also writes this file itself (username cache, channel
-// teams), so only resubscribe when channel_mappings actually changed —
-// tearing down the relay subscription drops the event stream for a moment.
-let resyncTimer = null;
-fs.watchFile(DB_FILE, { interval: 2000 }, () => {
-  clearTimeout(resyncTimer);
-  resyncTimer = setTimeout(() => {
-    let mappings;
+const buzz = new BuzzClient({ url: process.env.BUZZ_RELAY_URL, authKey: bridgeKey, onEvent: handleBuzzEvent });
+
+// ---------------------------------------------------------------------------
+// Inbound pipeline (Slack ➔ Buzz)
+// ---------------------------------------------------------------------------
+slackApp.message(async ({ message, client, context }) => {
+  if (message.bot_id || message.subtype === 'bot_message') return;
+  if (message.subtype && message.subtype !== 'thread_broadcast' && message.subtype !== 'file_share') return;
+
+  const mapping = db.channelBySlack(message.channel);
+  if (!mapping) return;
+  if (!message.user) return; // system/subtype messages carry no author
+
+  // Resolve author (cached in SQLite; profile fetched once per user).
+  let user = db.getUser(message.user);
+  if (!user?.display_name) {
+    let displayName = message.user;
     try {
-      mappings = JSON.stringify(readDB().channel_mappings);
-    } catch {
-      return; // half-written or invalid JSON — next change event will retry
+      const profile = await client.users.info({ user: message.user });
+      displayName = profile.user.real_name || profile.user.name;
+    } catch (e) {
+      console.error('users.info failed:', e.data?.error || e.message);
     }
-    if (mappings === subscribedMappingsSnapshot) return;
-    console.log('channel_mappings changed — resynchronizing Buzz subscriptions.');
-    synchronizeBuzzTracks();
-  }, 500);
+    const pubkey = KEY_MODE === 'per-user'
+      ? getPublicKey(deriveUserKey(masterKey, message.user))
+      : null;
+    db.saveUser({ slackUserId: message.user, teamId: context.teamId, displayName, pubkey });
+    user = db.getUser(message.user);
+  }
+
+  const text = slackMessageToPlain(message, (id) => db.getUser(id)?.display_name);
+  if (!text) return;
+
+  // Slack threads are flat: thread_ts is always the root message's ts.
+  let parentEventId;
+  if (message.thread_ts && message.thread_ts !== message.ts) {
+    parentEventId = db.eventIdForSlackTs(message.channel, message.thread_ts);
+    if (!parentEventId) {
+      console.warn(`Thread parent ${message.thread_ts} was never bridged — posting top-level.`);
+    }
+  }
+
+  const signerKey = KEY_MODE === 'per-user' ? deriveUserKey(masterKey, message.user) : undefined;
+  const content = KEY_MODE === 'per-user' ? text : `[Slack - ${user.display_name}]: ${text}`;
+
+  try {
+    const event = await buzz.publishChatMessage({
+      buzzChannelId: mapping.buzz_channel_id,
+      content,
+      parentEventId,
+      signerKey,
+    });
+    db.recordMessage(message.channel, message.ts, event.id, 's2b');
+  } catch (e) {
+    console.error('Slack→Buzz publish faulted:', e.message);
+  }
 });
 
 // ---------------------------------------------------------------------------
-// 5. Dynamic setup hook — bot invited to a new Slack channel
+// Channel onboarding: bot invited to a Slack channel
 // ---------------------------------------------------------------------------
 slackApp.event('member_joined_channel', async ({ event }) => {
-  const db = readDB();
-  const botUserId = db.workspaces[event.team]?.bot_user_id;
-  if (event.user !== botUserId) return;
+  const ws = db.getWorkspace(event.team);
+  if (event.user !== ws?.bot_user_id) return;
+  if (db.channelBySlack(event.channel)) return;
 
-  rememberChannelTeam(event.channel, event.team);
-
-  console.log(`\n🚨 DYNAMIC EXTENSION REQUEST REGISTERED FOR CHANNEL: ${event.channel}`);
-  console.log('Add this config pair to database.json under channel_mappings to establish routing:');
-  console.log(`"${event.channel}": "TARGET_BUZZ_CHANNEL_HEX_ID"`);
-  console.log(`"TARGET_BUZZ_CHANNEL_HEX_ID": "${event.channel}"\n`);
+  console.log(`\n🚨 New channel awaiting mapping: ${event.channel} (team ${event.team})`);
+  console.log(`Map it with: npm run map -- ${event.channel} <buzz-channel-uuid> ${event.team}\n`);
 });
 
 // ---------------------------------------------------------------------------
-// Initialize systems
+// Subscription lifecycle: follow the channel-mapping set as it changes
 // ---------------------------------------------------------------------------
-await connectRelay();
-synchronizeBuzzTracks();
+let lastChannelSet = '';
+function syncSubscriptions() {
+  const buzzIds = db.allChannels().map((c) => c.buzz_channel_id).sort();
+  const key = buzzIds.join(',');
+  if (key === lastChannelSet && buzz.sub) return;
+  lastChannelSet = key;
+  buzz.subscribe(buzzIds);
+}
+
+// ---------------------------------------------------------------------------
+// Startup / shutdown
+// ---------------------------------------------------------------------------
+await buzz.connect();
+syncSubscriptions();
+const subscriptionPoll = setInterval(syncSubscriptions, 15000);
+
 await slackApp.start(process.env.PORT || 3000);
-console.log(`🚀 Integration server online on port ${process.env.PORT || 3000}.`);
+console.log(`🚀 Bridge online on port ${process.env.PORT || 3000} (key mode: ${KEY_MODE}).`);
 console.log(`   OAuth landing page: ${PUBLIC_BASE_URL}/login`);
+console.log(`   Bridge Nostr pubkey: ${bridgePubkey}`);
 
 for (const sig of ['SIGINT', 'SIGTERM']) {
   process.on(sig, async () => {
     console.log(`\n${sig} received — shutting down.`);
+    clearInterval(subscriptionPoll);
     try {
-      if (activeNostrSub) activeNostrSub.close();
-      if (relay) {
-        relay.onclose = null;
-        relay.close();
-      }
+      buzz.close();
       await slackApp.stop();
+      db.close();
     } finally {
       process.exit(0);
     }

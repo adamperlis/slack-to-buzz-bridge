@@ -1,4 +1,7 @@
 node_modules/
 .env
 database.json
+database.json.migrated
+data/
+deploy/secrets/
 npm-debug.log*

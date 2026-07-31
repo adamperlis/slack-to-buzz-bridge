@@ -1,113 +1,119 @@
 # slack-to-buzz-bridge
 
-A free, open-source, multi-tenant bridge between **Slack** and **Buzz** (the
-decentralized workplace platform built on the open [Nostr](https://nostr.com)
-protocol). Clients keep using Slack on their side; your internal team runs
-entirely out of Buzz. No Slack Connect fees, no Zapier/Make accounts — just a
-tiny Node.js process and a Nostr relay.
+A free, open-source, multi-tenant bridge between **Slack** and
+**[Buzz](https://github.com/block/buzz)** — Block's decentralized, self-hosted
+workplace platform built on the open [Nostr](https://nostr.com) protocol.
+Clients keep using Slack; your team (and its AI agents) live in Buzz. No
+Slack Connect fees, no Zapier — one Node.js service and your Buzz hive.
 
 ```
-Client Slack channel  ──(Events API)──►  Bridge Bot  ──(signed Nostr event)──►  Buzz room
-Client Slack channel  ◄──(chat.postMessage)──  Bridge Bot  ◄──(relay subscription)──  Buzz room
+Client Slack workspaces ──OAuth install──►  /slack/install
+Client Slack messages   ──Events API────►  /slack/events ──► kind:9 (+h tag) ──► buzz-relay
+Buzz replies            ◄──NIP-29 groups── buzz-relay ◄── your team & AI agents
+                        └──► chat.postMessage back into the right Slack thread
 ```
 
-## How it works
+## What it does
 
-- **Slack ➔ Buzz** — the bot listens to messages in every mapped channel,
-  resolves the author's real name, converts Slack mrkdwn + `:emoji:`
-  shortcodes to plain unicode text, wraps it in a Nostr kind-1 event tagged
-  with the Buzz room's hex id, signs it with the bridge key, and publishes it
-  to your relay.
-- **Buzz ➔ Slack** — the bridge holds one relay subscription covering all
-  mapped Buzz rooms. Incoming events are routed back to the owning Slack
-  workspace/channel via `chat.postMessage`, prefixed `*[Buzz Client]*:`.
-- **Echo-loop prevention** — bridged Slack messages are signed by the bridge's
-  own Nostr key (skipped on the way back by pubkey), carry a rigid
-  `[Slack - <user>]:` prefix (skipped as a second guard), and Slack-side bot
-  messages (`bot_id` / `bot_message` subtype) are never re-bridged.
-- **Multi-tenant** — any number of client workspaces install via OAuth. Tokens
-  are stored per `team_id`, and each Slack channel remembers which workspace
-  owns it so outbound traffic always uses the right bot token.
+- **Multi-tenant OAuth** — any number of client workspaces install via a
+  "Sign in with Slack" page; per-workspace bot tokens are stored
+  **encrypted at rest** (AES-256-GCM, tenant-bound) in SQLite.
+- **Speaks Buzz's actual protocol** — NIP-29 `kind:9` chat messages with the
+  required `h` tag, NIP-42 relay authentication, and NIP-10 marked reply
+  tags. Verified against Buzz's published wire format.
+- **Threading, both directions** — Slack `thread_ts` maps to Nostr reply
+  tags and back; a reply in either system lands in the right thread in the
+  other.
+- **High-fidelity formatting** — parses Slack `rich_text` blocks (lists,
+  quotes, code, mentions) and converts emoji using the same
+  [emoji-data](https://github.com/iamcal/emoji-data) set Slack itself uses.
+- **Echo-loop prevention by cryptography** — the bridge skips events signed
+  by its own keys (pubkey check), plus the `[Slack -` content guard and
+  Slack-side `bot_id` filtering.
+- **Attribution** — Buzz authors appear in Slack by their kind:0 profile
+  name; Slack authors appear in Buzz by real name, or (in `per-user` key
+  mode) as individual derived Nostr identities that support native
+  deletions.
 
-## Setup
-
-### 1. Create the Slack app
-
-At [api.slack.com/apps](https://api.slack.com/apps) create an app, then:
-
-- **OAuth & Permissions** → Bot token scopes: `chat:write`,
-  `channels:history`, `channels:read`, `groups:history`, `users:read`
-- **OAuth & Permissions** → Redirect URL:
-  `https://your-production-domain.com/slack/oauth_redirect`
-- **Event Subscriptions** → Request URL:
-  `https://your-production-domain.com/slack/events`, and subscribe to bot
-  events: `message.channels`, `message.groups`, `member_joined_channel`
-- Enable **public distribution** so external workspaces can install it.
-
-### 2. Configure and run the bridge
+## Quick start (local)
 
 ```bash
-cp .env.example .env   # fill in the Slack app credentials + a Nostr private key
 npm install
+cp .env.example .env   # Slack app credentials + BRIDGE_MASTER_KEY
 npm start
+npm test               # unit + integration suite (mock NIP-29 relay + mock Slack API)
 ```
 
-Generate a bridge signing key:
+Generate the master key (drives token encryption, the bridge's Nostr
+identity, and per-user key derivation):
 
 ```bash
 node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 ```
 
-> **Privacy note:** everything published to a public relay (e.g.
-> `relay.damus.io`) is world-readable. For client conversations, point
-> `NOSTR_RELAY_URL` at a relay you control.
+## Slack app configuration
 
-### 3. Onboard a workspace
+At [api.slack.com/apps](https://api.slack.com/apps):
 
-Send the client (or yourself) to `https://your-domain.com/login` and click
-**Add to Slack**. The OAuth flow stores the workspace's bot token in
-`database.json` automatically.
+- **Bot token scopes:** `chat:write`, `channels:history`, `channels:read`,
+  `groups:history`, `users:read`
+- **Redirect URL:** `https://<your-domain>/slack/oauth_redirect`
+- **Event Subscriptions request URL:** `https://<your-domain>/slack/events`,
+  with bot events `message.channels`, `message.groups`,
+  `member_joined_channel`
+- Enable public distribution (unlisted) so client workspaces can install.
 
-### 4. Map a channel to a Buzz room
+## Connecting a channel
 
-Invite the bot to the Slack channel. The server logs the channel id and the
-exact JSON pair to add. Edit `database.json` (see `database.example.json` for
-the schema) and add both directions under `channel_mappings`:
+1. A client installs the app via `https://<your-domain>/login`.
+2. Invite the bot to the shared Slack channel — the server logs the channel
+   id and the exact mapping command.
+3. Create (or pick) the Buzz channel and map them:
 
-```json
-"C0123456789": "buzz_room_hex_id…",
-"buzz_room_hex_id…": "C0123456789"
+```bash
+npm run map -- C0123456789 <buzz-channel-uuid> [team-id]
 ```
 
-The bridge watches `database.json` and re-synchronizes its relay
-subscriptions automatically — no restart needed.
+The running bridge picks up new mappings within 15 seconds. The bridge's
+Nostr pubkey (printed at startup) must be allowed to publish on your Buzz
+relay — add it to the relay's allowlist / channel membership.
 
-## Free-tier playbook
+## Deployment
 
-- Works with **free Slack workspaces** — the Events API and OAuth used here
-  are available on every plan.
-- To join a *client's paid* workspace without Slack Connect, use their
-  **single-channel guest** seats (5 free guests per paid member) or an
-  Enterprise Grid free-join flag, and run the bridge bot inside the shared
-  channel.
-- The Nostr relay side is free by design; any open relay or a self-hosted
-  [strfry](https://github.com/hoytech/strfry)/`nostr-rs-relay` instance works.
+The `deploy/` directory contains the full co-hosted stack for an Oracle
+Cloud Always Free ARM instance: `Dockerfile` (arm64-native),
+`docker-compose.yml` (Caddy + bridge + Buzz's relay/Postgres/Redis/MinIO
+tier, with only Caddy exposed), `Caddyfile`, and `oci-setup.md` — a
+step-by-step guide covering OCI's firewall traps, Docker port-publishing
+pitfalls, and the lockdown verification gate. The deeper reasoning lives in
+`docs/ARCHITECTURE-RESEARCH.md`.
 
-## Files
+## Configuration reference
 
-| File | Purpose |
-|------|---------|
-| `server.js` | The whole bridge: OAuth receiver, both pipelines, channel hooks |
-| `database.json` | Flat-file store: workspace tokens, channel maps, user directory (git-ignored — holds secrets) |
-| `database.example.json` | Schema reference with mock values |
-| `.env.example` | Environment template — copy to `.env` |
+| Variable | Purpose |
+|---|---|
+| `SLACK_CLIENT_ID` / `SLACK_CLIENT_SECRET` / `SLACK_SIGNING_SECRET` | Slack app credentials |
+| `SLACK_STATE_SECRET` | OAuth CSRF state secret (set your own in production) |
+| `PUBLIC_BASE_URL` | Public HTTPS base URL of this server |
+| `BUZZ_RELAY_URL` | WebSocket URL of your Buzz relay |
+| `BRIDGE_MASTER_KEY` | 32-byte hex master secret (encryption + signing) |
+| `BRIDGE_KEY_MODE` | `single` (default) or `per-user` derived identities |
+| `BRIDGE_DB` | SQLite path (default `./data/bridge.sqlite`) |
+| `PORT` | HTTP port (default 3000) |
+
+Upgrading from the v1 flat-file version: on first boot the server migrates
+`database.json` into SQLite (tokens become encrypted) and renames the old
+file to `database.json.migrated`.
 
 ## Contributing & security
 
-Contributions are welcome — see [CONTRIBUTING.md](CONTRIBUTING.md) for dev
-setup and guidelines. For security-sensitive reports, see
-[SECURITY.md](SECURITY.md); please don't file public issues for
-vulnerabilities.
+Contributions welcome — see [CONTRIBUTING.md](CONTRIBUTING.md). For
+security-sensitive reports see [SECURITY.md](SECURITY.md); please don't file
+public issues for vulnerabilities. Deployers should read the security
+properties in SECURITY.md — in particular: anything bridged to a relay you
+don't control is world-readable, and AI agents consuming the relay stream
+must treat bridge-originated content as untrusted data (key off the bridge's
+signing pubkey, never message text).
 
 ## License
 
