@@ -139,7 +139,7 @@ const receiver = new ExpressReceiver({
   signingSecret: process.env.SLACK_SIGNING_SECRET,
   clientId: process.env.SLACK_CLIENT_ID,
   clientSecret: process.env.SLACK_CLIENT_SECRET,
-  stateSecret: 'nostr-bridge-v1-auth-handshake',
+  stateSecret: process.env.SLACK_STATE_SECRET || 'nostr-bridge-v1-auth-handshake',
   scopes: ['chat:write', 'channels:history', 'channels:read', 'groups:history', 'users:read'],
   redirectUri: `${PUBLIC_BASE_URL}/slack/oauth_redirect`,
   installerOptions: {
@@ -281,6 +281,7 @@ slackApp.message(async ({ message, client, context }) => {
 // 4. Outbound pipeline (Buzz ➔ Slack)
 // ---------------------------------------------------------------------------
 let activeNostrSub = null;
+let subscribedMappingsSnapshot = '';
 
 function synchronizeBuzzTracks() {
   if (activeNostrSub) {
@@ -290,6 +291,7 @@ function synchronizeBuzzTracks() {
   if (!relay || !relay.connected) return;
 
   const db = readDB();
+  subscribedMappingsSnapshot = JSON.stringify(db.channel_mappings);
   const activeBuzzHexTargets = Object.keys(db.channel_mappings).filter(isBuzzHexId);
   if (activeBuzzHexTargets.length === 0) {
     console.log('No Buzz rooms mapped yet — outbound sync idle.');
@@ -340,12 +342,22 @@ function synchronizeBuzzTracks() {
   console.log(`📡 Subscribed to ${activeBuzzHexTargets.length} Buzz room(s).`);
 }
 
-// Re-sync subscriptions when database.json is edited (new mappings added by hand).
+// Re-sync subscriptions when database.json is edited (new mappings added by
+// hand). The server also writes this file itself (username cache, channel
+// teams), so only resubscribe when channel_mappings actually changed —
+// tearing down the relay subscription drops the event stream for a moment.
 let resyncTimer = null;
 fs.watchFile(DB_FILE, { interval: 2000 }, () => {
   clearTimeout(resyncTimer);
   resyncTimer = setTimeout(() => {
-    console.log('database.json changed — resynchronizing Buzz subscriptions.');
+    let mappings;
+    try {
+      mappings = JSON.stringify(readDB().channel_mappings);
+    } catch {
+      return; // half-written or invalid JSON — next change event will retry
+    }
+    if (mappings === subscribedMappingsSnapshot) return;
+    console.log('channel_mappings changed — resynchronizing Buzz subscriptions.');
     synchronizeBuzzTracks();
   }, 500);
 });
