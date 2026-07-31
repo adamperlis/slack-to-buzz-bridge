@@ -102,7 +102,7 @@ a question that exists.
 |---|---|---|
 | **Enterprise Grid** (big-company tier) | ✅ Free indefinitely — *but* only while their admins keep the "free teams can join" setting on, and you work inside their org | ✅ Free — client installs the app in their own workspace |
 | **Pro or Business+** (typical paid team) | ⏳ Free for 90 days (one-time trial per workspace), then **~$7.25+/month for every teammate** in the channel — or you lose access | ✅ Free — same, nothing changes by their tier |
-| **Free plan** | ❌ Impossible — Slack Connect requires paid plans, so you can't share a channel with them at all | ✅ Free — the one way to bridge a free-plan client at all |
+| **Free plan** | ❌ Impossible — Slack Connect requires paid plans, so you can't share a channel with them at all | N/A — there's no Slack Connect setup to replace here (the bridge does still work with free-plan workspaces, if you ever need it) |
 
 And the Slack Connect column carries a hidden cost in every row: your
 team still lives under Slack's free-plan limits, with project history
