@@ -20,7 +20,8 @@ clients, and you can't stop paying while your team is on it.
 **The fix:** move your team to **Buzz** (a free, open-source team chat you
 host yourself), and let this bridge relay messages both ways — so clients
 keep chatting in Slack like always, your team replies from Buzz, and
-neither side notices anything changed. The section
+neither side notices anything changed. Everything installs on **your**
+side: clients never add an app, approve anything, or change how they work. The section
 [below](#what-youre-paying-slack-today--and-what-this-changes) details
 exactly which Slack costs this removes and how to downgrade.
 
@@ -107,37 +108,37 @@ a question that exists.
 And the Slack Connect column carries a hidden cost in every row: your
 team still lives under Slack's free-plan limits, with project history
 vanishing after 90 days. The bridge column's requirement is one install —
-by the client in their workspace (Setup A below), or by you into an
-existing Slack Connect channel when the client won't touch apps (Setup B
-below).
+normally by **you, into your own workspace** (see "how you wire it up"
+below); a client-side install is the fallback for clients who'll click
+once.
 
-**What the bridge changes — two ways to wire a client.** Who installs the
-app matters, so be clear about the distinction:
+**What the bridge changes — how you wire it up.**
 
-**Setup A — the client installs it (client clicks once).** The bridged
-channel is a **regular channel inside the client's own workspace** with
-your app installed. From Slack's point of view there's no second
-organization in the room, so Slack Connect isn't involved at all: your
-side needs no Slack plan whatsoever, and the client can be on any plan
-including free. Requires exactly one click from one person at the client
-("Add to Slack" → Allow).
+**The main setup — you install it, in your own workspace; clients do
+nothing.** This is the whole point of the bridge: you can't ask clients
+to install apps, and you shouldn't have to. You keep (or create) a free
+Slack workspace, stay in the **Slack Connect channels your clients have
+already invited you to**, and install the bridge into *your* workspace —
+then invite the bot into each shared channel from your side. Slack's app
+model supports this: a bot sees and posts messages in a Slack Connect
+channel for members of both organizations. The client approves nothing,
+installs nothing, and notices nothing; your team reads and replies from
+Buzz. Your Slack cost is whatever keeps you in those Connect channels —
+which is the point of the table above: **$0 indefinitely under
+Enterprise Grid clients**, the 90-day trial under Pro/Business+ clients,
+and paid after that.
 
-**Setup B — you install it (client does *nothing*).** Some clients can't
-or won't install apps, even one click. If you already share a **Slack
-Connect channel** with them, install the bridge into **your own
-workspace** and invite the bot to that shared channel from your side.
-Slack's app model supports this: a bot sees and posts messages in a
-Slack Connect channel for members of both organizations, while the client
-approves nothing and notices nothing. Your workspace can be on the free
-plan. The trade-off: this keeps the Slack Connect dependency alive — your
-workspace must stay in that channel (free indefinitely under an
-Enterprise Grid client, 90 days on the trial, paid otherwise), so the
-table above still governs what that costs you.
+**The fallback — the client installs it (one click).** If a client *is*
+willing to click "Add to Slack" once, the bridged channel can instead be
+a regular channel inside their own workspace. That removes the Slack
+Connect dependency entirely — you then need no Slack workspace at all,
+and it's the only route for clients on Slack's free plan (who can't be
+in Connect channels). Worth offering to clients you're closest to.
 
 | | Who acts | Slack Connect involved? | Your Slack cost |
 |---|---|---|---|
-| **Setup A** | Client: one click | No — plain channel in their workspace | None — you have no Slack at all |
-| **Setup B** | You: install + invite bot | Yes — the existing shared channel | Free workspace (Grid client or trial); paid otherwise |
+| **Main setup** | You: install + invite bot | Yes — your existing shared channels | Free workspace (Grid clients; or 90-day trial); paid after |
+| **Fallback** | Client: one click | No — plain channel in their workspace | None — you need no Slack at all |
 
 (One free-plan caveat that applies to whichever workspace hosts the app:
 free workspaces are limited to about 10 app integrations, and the bridge
@@ -280,29 +281,29 @@ GitHub once the repo is public, with no npm publish needed.
    `SLACK_ALLOWED_TEAMS` in `.env` — installs from any other workspace are
    then rejected outright.
 
-### Step 3 — Install it into a workspace
+### Step 3 — Install it into your workspace
 
 Open `https://YOUR-ADDRESS/login` in a browser and click **Add to Slack**,
-then **Allow**. That's the whole install flow — the same link works for
-your clients, in their own workspaces. The bridge stores each workspace's
-access token encrypted.
+then **Allow** — installing it into **your own workspace** (the one that's
+in the Slack Connect channels with your clients). That's the whole
+install: one person, one click, one time. The bridge stores the
+workspace's access token encrypted.
 
-**Who has to do this?** Exactly one person per Slack workspace, one time.
-The install is workspace-level: it adds a single bot for everyone, so
-teammates and clients in the channel never install anything themselves.
-(The clicker needs permission to install apps in their workspace — in many
-workspaces any member can; some restrict it to admins.) And your own
-internal team installs nothing anywhere — they just use Buzz.
+Because the app lives in *your* workspace, your clients approve nothing
+and install nothing — in the next step you'll simply invite the bot into
+the shared channels from your side. Your teammates also install nothing
+anywhere; they just use Buzz.
 
-**Client can't install apps at all?** Use Setup B instead (see
-["two ways to wire a client"](#what-youre-paying-slack-today--and-what-this-changes)):
-install the bridge into **your own** workspace and, in the next step,
-invite the bot to the Slack Connect channel you already share with that
-client — the client does nothing whatsoever.
+**Fallback for app-friendly clients:** the same `/login` link works in a
+client's workspace too. If a client is happy to click "Add to Slack" once,
+the channel can live in their workspace instead — which removes the Slack
+Connect dependency for that client entirely (see
+["how you wire it up"](#what-youre-paying-slack-today--and-what-this-changes)).
 
 ### Step 4 — Connect a Slack channel to a Buzz channel
 
-1. In Slack, open the channel you want to bridge and invite the bot:
+1. In Slack, open the channel you want to bridge — typically the **Slack
+   Connect channel you share with a client** — and invite the bot:
    type `/invite @Buzz Bridge` (or whatever you named it).
 2. Look at the bridge's terminal — it logs the channel's ID and the exact
    command to run.
