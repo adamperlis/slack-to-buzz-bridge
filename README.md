@@ -209,9 +209,14 @@ internal team installs nothing anywhere — they just use Buzz.
 The running bridge picks up new mappings within 15 seconds — no restart.
 
 One more thing on the Buzz side: when it starts, the bridge prints its
-**Nostr pubkey**. Your Buzz relay must allow that pubkey to post — add it
-to the relay's allowlist and/or the Buzz channel's members (your Buzz
-admin does this once).
+**Nostr pubkey** — its identity in Buzz. A Buzz admin allows that pubkey
+on the relay and adds it as a member of each bridged channel, the same way
+you'd add any teammate.
+
+**Who has to do this?** One Buzz admin, once. Your teammates set up
+nothing — if they're in the bridged Buzz channel, they see client messages
+appear and their replies flow back to Slack automatically. To them the
+bridge is just one more channel member.
 
 ### Step 5 — Test it
 
