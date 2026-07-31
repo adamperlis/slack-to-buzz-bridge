@@ -234,7 +234,7 @@ Later, `npx slack-to-buzz-bridge` starts the bridge and
 `npx slack-to-buzz-bridge map …` connects channels.
 
 <details>
-<summary>Prefer a git checkout? (contributors, or before the npm package is published)</summary>
+<summary>Prefer a git checkout? (for contributors)</summary>
 
 ```bash
 git clone https://github.com/adamperlis/slack-to-buzz-bridge.git
@@ -247,7 +247,7 @@ npm run map --   # instead of: npx slack-to-buzz-bridge map
 ```
 
 `npx github:adamperlis/slack-to-buzz-bridge` also works directly from
-GitHub once the repo is public, with no npm publish needed.
+GitHub (once the repo is public) if you want to run unreleased code.
 </details>
 
 ### Step 2 — Create your Slack app
