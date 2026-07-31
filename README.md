@@ -10,11 +10,35 @@
 > may shift. Test thoroughly in a sandbox before trusting it with client
 > conversations, and expect rough edges. Bug reports are very welcome.
 
-A free, open-source, multi-tenant bridge between **Slack** and
-**[Buzz](https://github.com/block/buzz)** — Block's decentralized, self-hosted
-workplace platform built on the open [Nostr](https://nostr.com) protocol.
-Clients keep using Slack; your team (and its AI agents) live in Buzz. No
-Slack Connect fees, no Zapier — one Node.js service and your Buzz hive.
+## What is this?
+
+**The short version: your clients keep chatting in Slack, your team reads
+and replies from somewhere free — and neither side has to change anything.**
+
+Here's the situation this solves. Slack is where your clients live, and
+asking them to switch apps is a non-starter. But paying for Slack seats for
+your whole team — plus Slack Connect for shared channels — gets expensive
+fast, and your conversations live on someone else's servers.
+
+**[Buzz](https://github.com/block/buzz)** is a new, free, open-source team
+chat platform from Block (Jack Dorsey's company). You run it yourself, you
+own your data, it costs nothing per seat, and it's built for teams that
+work alongside AI agents.
+
+This bridge connects the two. You set it up once, and then:
+
+- A client types a message in your shared Slack channel → it appears in
+  your team's Buzz channel seconds later, with their name on it.
+- Your teammate (or your AI agent) replies in Buzz → it shows up back in
+  the Slack channel, in the right thread.
+- **Your clients never know the difference.** They just see replies in
+  Slack like always. Meanwhile your team stopped paying for Slack.
+
+Nobody hosts this for you and nobody sees your messages — you run the
+bridge on your own server (there's a $0 option), and it's free forever
+because it's open source.
+
+## How it works, slightly more technically
 
 ```
 Client Slack workspaces ──OAuth install──►  /slack/install
@@ -23,7 +47,12 @@ Buzz replies            ◄──NIP-29 groups── buzz-relay ◄── your t
                         └──► chat.postMessage back into the right Slack thread
 ```
 
-## What it does
+A multi-tenant OAuth bridge: any number of client workspaces install a
+"Sign in with Slack" app, and one Node.js service relays messages both
+ways between Slack channels and Buzz channels over the open
+[Nostr](https://nostr.com) protocol.
+
+## Under the hood
 
 - **Multi-tenant OAuth** — any number of client workspaces install via a
   "Sign in with Slack" page; per-workspace bot tokens are stored
