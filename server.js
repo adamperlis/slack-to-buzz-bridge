@@ -256,6 +256,15 @@ slackApp.message(async ({ message, client, context }) => {
     user = db.getUser(message.user);
   }
 
+  // Backfill derived pubkeys for user rows created before per-user mode was
+  // enabled. Without this, the echo-loop guard (userByPubkey) cannot
+  // recognize the bridge's own per-user events — which have no [Slack -
+  // prefix — and they would loop back into Slack.
+  if (KEY_MODE === 'per-user' && !user.pubkey) {
+    db.saveUser({ slackUserId: message.user, pubkey: getPublicKey(deriveUserKey(masterKey, message.user)) });
+    user = db.getUser(message.user);
+  }
+
   const text = slackMessageToPlain(message, (id) => db.getUser(id)?.display_name);
   if (!text) return;
 

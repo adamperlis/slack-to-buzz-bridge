@@ -10,6 +10,7 @@ services:
     name: slack-to-buzz-bridge
     runtime: docker
     dockerfilePath: ./deploy/Dockerfile
+    dockerContext: .
     plan: starter
     healthCheckPath: /healthz
     autoDeploy: false
