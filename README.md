@@ -106,23 +106,42 @@ a question that exists.
 
 And the Slack Connect column carries a hidden cost in every row: your
 team still lives under Slack's free-plan limits, with project history
-vanishing after 90 days. The bridge column's only requirement, in every
-row, is the same one click: the client installs the app in their own
-workspace.
+vanishing after 90 days. The bridge column's requirement is one install —
+by the client in their workspace (Setup A below), or by you into an
+existing Slack Connect channel when the client won't touch apps (Setup B
+below).
 
-**What the bridge changes.** A bridged channel isn't a Slack Connect
-channel at all. It's a **regular channel inside the client's own
-workspace** with an app installed — from Slack's point of view there's no
-second organization in the room, so nothing about it requires Slack
-Connect, on either side. That means:
+**What the bridge changes — two ways to wire a client.** Who installs the
+app matters, so be clear about the distinction:
 
-- **Your side: no Slack plan needed at all.** Your team doesn't have Slack
-  accounts — they're in Buzz. You're not in the channel; your bridge is.
-- **The client's side: any plan works, including free.** They're just
-  using a normal channel in their own workspace. In fact, this *enables*
-  something Slack Connect forbids: collaborating with a client who's on
-  Slack's free plan. (One free-plan caveat: free workspaces are limited to
-  about 10 app integrations, and the bridge counts as one.)
+**Setup A — the client installs it (client clicks once).** The bridged
+channel is a **regular channel inside the client's own workspace** with
+your app installed. From Slack's point of view there's no second
+organization in the room, so Slack Connect isn't involved at all: your
+side needs no Slack plan whatsoever, and the client can be on any plan
+including free. Requires exactly one click from one person at the client
+("Add to Slack" → Allow).
+
+**Setup B — you install it (client does *nothing*).** Some clients can't
+or won't install apps, even one click. If you already share a **Slack
+Connect channel** with them, install the bridge into **your own
+workspace** and invite the bot to that shared channel from your side.
+Slack's app model supports this: a bot sees and posts messages in a
+Slack Connect channel for members of both organizations, while the client
+approves nothing and notices nothing. Your workspace can be on the free
+plan. The trade-off: this keeps the Slack Connect dependency alive — your
+workspace must stay in that channel (free indefinitely under an
+Enterprise Grid client, 90 days on the trial, paid otherwise), so the
+table above still governs what that costs you.
+
+| | Who acts | Slack Connect involved? | Your Slack cost |
+|---|---|---|---|
+| **Setup A** | Client: one click | No — plain channel in their workspace | None — you have no Slack at all |
+| **Setup B** | You: install + invite bot | Yes — the existing shared channel | Free workspace (Grid client or trial); paid otherwise |
+
+(One free-plan caveat that applies to whichever workspace hosts the app:
+free workspaces are limited to about 10 app integrations, and the bridge
+counts as one.)
 
 **How to actually wind down your Slack bill.** If you're currently on a
 paid plan with Slack Connect channels, the migration looks like this:
@@ -274,6 +293,12 @@ teammates and clients in the channel never install anything themselves.
 (The clicker needs permission to install apps in their workspace — in many
 workspaces any member can; some restrict it to admins.) And your own
 internal team installs nothing anywhere — they just use Buzz.
+
+**Client can't install apps at all?** Use Setup B instead (see
+["two ways to wire a client"](#what-youre-paying-slack-today--and-what-this-changes)):
+install the bridge into **your own** workspace and, in the next step,
+invite the bot to the Slack Connect channel you already share with that
+client — the client does nothing whatsoever.
 
 ### Step 4 — Connect a Slack channel to a Buzz channel
 
