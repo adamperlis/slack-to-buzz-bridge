@@ -148,7 +148,9 @@ function sendSlackEvent(event) {
   });
 }
 
-const waitFor = async (fn, ms = 5000) => {
+// Generous timeout: these normally resolve in <1s, but CI boxes under load
+// (e.g. compiling native deps in parallel) have produced flaky 5s misses.
+const waitFor = async (fn, ms = 20000) => {
   const start = Date.now();
   while (Date.now() - start < ms) {
     const v = fn();
@@ -187,7 +189,7 @@ before(async () => {
   bridge.stdout.on('data', (d) => process.stdout.write(`[bridge] ${d}`));
   bridge.stderr.on('data', (d) => process.stderr.write(`[bridge!] ${d}`));
 
-  await waitFor(() => relayState.subs.length > 0, 10000);
+  await waitFor(() => relayState.subs.length > 0, 30000);
 });
 
 after(async () => {
