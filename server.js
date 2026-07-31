@@ -22,6 +22,14 @@ process.env.PUBLIC_BASE_URL ||= process.env.REDIRECT_URI;
 process.env.BUZZ_RELAY_URL ||= process.env.NOSTR_RELAY_URL;
 process.env.BRIDGE_MASTER_KEY ||= process.env.BUZZ_BRIDGE_SECRET_KEY;
 
+// Managed platforms inject their public URL — pick it up so one-click
+// deploys don't need PUBLIC_BASE_URL typed by hand.
+process.env.PUBLIC_BASE_URL ||=
+  process.env.RENDER_EXTERNAL_URL ||
+  (process.env.RAILWAY_PUBLIC_DOMAIN && `https://${process.env.RAILWAY_PUBLIC_DOMAIN}`) ||
+  (process.env.FLY_APP_NAME && `https://${process.env.FLY_APP_NAME}.fly.dev`) ||
+  '';
+
 const missing = REQUIRED_ENV.filter((k) => !process.env[k]);
 if (missing.length) {
   console.error(`Missing required environment variables: ${missing.join(', ')}`);

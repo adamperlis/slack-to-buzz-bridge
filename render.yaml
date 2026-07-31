@@ -1,0 +1,36 @@
+# Render Blueprint — powers the "Deploy to Render" button.
+# https://render.com/deploy?repo=https://github.com/adamperlis/slack-to-buzz-bridge
+#
+# Free tier won't work (sleeps + no disks); starter plan + 1GB disk is the
+# minimum viable setup. Render terminates TLS and injects PORT and
+# RENDER_EXTERNAL_URL — the bridge picks both up automatically, so the only
+# values the user types are their Slack app credentials and relay URL.
+services:
+  - type: web
+    name: slack-to-buzz-bridge
+    runtime: docker
+    dockerfilePath: ./deploy/Dockerfile
+    plan: starter
+    healthCheckPath: /healthz
+    autoDeploy: false
+    disk:
+      name: bridge-data
+      mountPath: /app/data
+      sizeGB: 1
+    envVars:
+      - key: BRIDGE_DB
+        value: /app/data/bridge.sqlite
+      - key: BRIDGE_MASTER_KEY
+        generateValue: true
+      - key: SLACK_STATE_SECRET
+        generateValue: true
+      - key: SLACK_CLIENT_ID
+        sync: false
+      - key: SLACK_CLIENT_SECRET
+        sync: false
+      - key: SLACK_SIGNING_SECRET
+        sync: false
+      - key: BUZZ_RELAY_URL
+        sync: false
+      - key: SLACK_ALLOWED_TEAMS
+        value: ""

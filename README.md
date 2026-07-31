@@ -356,6 +356,16 @@ ways between Slack channels and Buzz channels over the open
 
 ## Deployment — you host it yourself
 
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/adamperlis/slack-to-buzz-bridge)
+
+The fastest path: click the button above — the repo's `render.yaml`
+blueprint provisions the service, a persistent disk, and generated
+secrets; you type only your four Slack/Buzz values into Render's form
+(~$7/mo + disk, since Render's free tier sleeps). Ready-made configs for
+Fly.io (`fly.toml`) and Railway (`railway.json`) are in the repo root too.
+On all three platforms the bridge auto-detects its public URL, so
+`PUBLIC_BASE_URL` never needs typing.
+
 Nobody hosts this for you: every team runs its own bridge, so your Slack
 tokens and message traffic never touch anyone else's servers.
 **[docs/HOSTING.md](docs/HOSTING.md)** compares the realistic options —

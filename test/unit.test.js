@@ -42,7 +42,17 @@ describe('crypto', () => {
 
   test('rejects malformed master keys', () => {
     assert.throws(() => loadMasterKey('short'));
+    assert.throws(() => loadMasterKey('hunter2-hunter2-hunter2')); // < 32 chars
     assert.throws(() => loadMasterKey(undefined));
+  });
+
+  test('accepts platform-generated long random secrets by hashing', () => {
+    const generated = 'aXJ3nB8pQ2mK9vL4cD7fG1hT6yU0eWzR5sO3iP8qN2bM'; // Render-style
+    const k1 = loadMasterKey(generated);
+    const k2 = loadMasterKey(generated);
+    assert.equal(k1.length, 32);
+    assert.deepEqual(k1, k2);
+    assert.notDeepEqual(k1, loadMasterKey(generated + 'x'));
   });
 });
 

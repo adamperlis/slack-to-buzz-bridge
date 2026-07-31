@@ -7,11 +7,18 @@ import { getPublicKey } from 'nostr-tools/pure';
 // safe well below 2^32 encryptions per key — we do a handful per install.
 const KEY_VERSION = 1;
 
-export function loadMasterKey(hex) {
-  if (!/^[0-9a-f]{64}$/i.test(hex || '')) {
-    throw new Error('BRIDGE_MASTER_KEY must be 64 hex characters (32 bytes). Generate: node -e "console.log(require(\'crypto\').randomBytes(32).toString(\'hex\'))"');
+export function loadMasterKey(secret) {
+  if (/^[0-9a-f]{64}$/i.test(secret || '')) {
+    return Buffer.from(secret, 'hex');
   }
-  return Buffer.from(hex, 'hex');
+  // One-click deploy platforms (Render generateValue etc.) produce long
+  // random strings rather than hex — hash any high-entropy secret down to
+  // the 32-byte key. This is NOT password stretching: short human-chosen
+  // passphrases are rejected, not accepted-and-hashed.
+  if (typeof secret === 'string' && secret.length >= 32) {
+    return crypto.createHash('sha256').update(secret, 'utf8').digest();
+  }
+  throw new Error('BRIDGE_MASTER_KEY must be 64 hex characters, or a random secret of at least 32 characters. Generate: node -e "console.log(require(\'crypto\').randomBytes(32).toString(\'hex\'))"');
 }
 
 export function encryptSecret(masterKey, plaintext, aad) {

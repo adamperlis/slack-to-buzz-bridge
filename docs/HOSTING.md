@@ -89,44 +89,49 @@ VM's iptables, install Docker, and run the compose stack. Expect capacity
 retries when launching the free ARM instance, and note the free allowance
 shrank to ~2 OCPU / 12 GB in mid-2026.
 
-## Option C — Render (managed, easiest)
+## Option C — Render (managed, easiest — one-click)
+
+Click **Deploy to Render** in the README (or open
+`https://render.com/deploy?repo=https://github.com/adamperlis/slack-to-buzz-bridge`).
+The repo's `render.yaml` blueprint does the setup for you: Docker build,
+1 GB persistent disk at `/app/data`, `/healthz` health check, and
+auto-generated `BRIDGE_MASTER_KEY` + `SLACK_STATE_SECRET`. Render's form
+prompts for the only four values it can't invent: `SLACK_CLIENT_ID`,
+`SLACK_CLIENT_SECRET`, `SLACK_SIGNING_SECRET`, and `BUZZ_RELAY_URL`.
 
 The **free tier will not work** — free web services spin down after 15
-idle minutes and cannot attach persistent disks. Use a paid instance
-(Starter, ~$7/mo) plus a small disk:
-
-1. Fork/push the repo to your GitHub, then in Render: **New → Web
-   Service**, connect the repo.
-2. Environment: **Docker**; set *Dockerfile path* to `deploy/Dockerfile`.
-3. **Add a persistent disk**: mount path `/app/data`, 1 GB is plenty.
-4. Environment variables: everything from `.env.example` — set
-   `BRIDGE_DB=/app/data/bridge.sqlite` and `PUBLIC_BASE_URL` to the
-   `https://….onrender.com` URL Render assigns (or your custom domain).
-5. Health check path: `/healthz`.
-
-Render terminates TLS for you — no Caddy needed; the container serves
-plain HTTP on `PORT` (Render sets it; the bridge reads it).
+idle minutes and cannot attach persistent disks — so the blueprint pins
+the Starter plan (~$7/mo) plus the disk. Render terminates TLS and
+injects the public URL (`RENDER_EXTERNAL_URL`), which the bridge picks up
+automatically — no `PUBLIC_BASE_URL` to configure. Use the assigned
+`https://….onrender.com` address in your Slack app's redirect/events
+URLs.
 
 ## Option D — Fly.io
 
+A ready `fly.toml` ships in the repo root (Docker build, `/app/data`
+volume mount, `/healthz` check, and — critical — always-on machines so
+the relay WebSocket never drops):
+
 ```bash
-fly launch --no-deploy          # detects the repo; pick a region near your relay
+fly launch --copy-config --no-deploy   # keeps the repo's fly.toml
 fly volumes create bridge_data --size 1
+fly secrets set SLACK_CLIENT_ID=… SLACK_CLIENT_SECRET=… \
+  SLACK_SIGNING_SECRET=… BUZZ_RELAY_URL=… \
+  BRIDGE_MASTER_KEY=$(openssl rand -hex 32)
+fly deploy
 ```
 
-In the generated `fly.toml`: point the build at `deploy/Dockerfile`, mount
-the volume at `/app/data`, set `internal_port = 3000`, and — critical —
-keep the machine always-on (`auto_stop_machines = false`,
-`min_machines_running = 1`). Set secrets with
-`fly secrets set BRIDGE_MASTER_KEY=… SLACK_CLIENT_SECRET=…` etc., then
-`fly deploy`. `PUBLIC_BASE_URL` is your `https://<app>.fly.dev` URL.
+The bridge derives its public URL from the Fly app name automatically.
 
 ## Option E — Railway
 
-**New Project → Deploy from GitHub repo**, set the Dockerfile path to
-`deploy/Dockerfile`, attach a **volume** mounted at `/app/data`, add the
-environment variables, and enable a public domain. Railway bills by usage;
-a small always-on service typically lands around $5/mo.
+**New Project → Deploy from GitHub repo** — the repo's `railway.json`
+sets the Docker build and health check automatically. Attach a **volume**
+mounted at `/app/data`, set `BRIDGE_DB=/app/data/bridge.sqlite` plus the
+four Slack/Buzz variables and a `BRIDGE_MASTER_KEY`, and enable a public
+domain — the bridge picks the domain up automatically. Railway bills by
+usage; a small always-on service typically lands around $5/mo.
 
 ---
 
