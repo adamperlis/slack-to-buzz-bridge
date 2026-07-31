@@ -113,23 +113,22 @@ look at what that free ride depends on:
   evaporating.
 
 **At a glance — what does talking to each client cost you?** The Slack
-Connect column assumes the best case for Slack: your team downgraded to
-Slack's free plan and stays in Slack. The bridge column is a different
-world: your team isn't on Slack at all, so *your* Slack plan stops being
-a question that exists.
+Connect column is life without the bridge: your whole team in Slack,
+every teammate a potential seat. The bridge column is the main setup:
+your team is in Buzz, and the only Slack question left is what keeps
+**your one workspace** in the shared channels — teammate count stops
+mattering entirely.
 
-| Your client's Slack plan | Slack Connect (your team on Slack, free plan) | This bridge (your team on Buzz, no Slack) |
+| Your client's Slack plan | Slack Connect, no bridge (whole team in Slack) | This bridge (team in Buzz; you keep one workspace) |
 |---|---|---|
-| **Enterprise Grid** (big-company tier) | ✅ Free indefinitely — *but* only while their admins keep the "free teams can join" setting on, and you work inside their org | ✅ Free — client installs the app in their own workspace |
-| **Pro or Business+** (typical paid team) | ⏳ Free for 90 days (one-time trial per workspace), then **~$7.25+/month for every teammate** in the channel — or you lose access | ✅ Free — same, nothing changes by their tier |
-| **Free plan** | ❌ Impossible — Slack Connect requires paid plans, so you can't share a channel with them at all | N/A — there's no Slack Connect setup to replace here (the bridge does still work with free-plan workspaces, if you ever need it) |
+| **Enterprise Grid** (big-company tier) | ✅ Free indefinitely — *but* only while their admins keep the "free teams can join" setting on, and your whole team works inside their org | ✅ **$0** — your free workspace sits in their Connect channels; the bot relays to Buzz |
+| **Pro or Business+** (typical paid team) | ⏳ Free for 90 days (one-time trial per workspace), then **~$7.25+/month for every teammate** in the channel — or you lose access | ⏳ Free 90 days, then **one seat total** (~$8.75/mo, not per teammate) — or $0 via the fallback below |
+| **Free plan** | ❌ Impossible — Slack Connect requires paid plans, so you can't share a channel with them at all | N/A — no Connect channel exists to bridge; use the fallback below if needed |
 
 And the Slack Connect column carries a hidden cost in every row: your
-team still lives under Slack's free-plan limits, with project history
-vanishing after 90 days. The bridge column's requirement is one install —
-normally by **you, into your own workspace** (see "how you wire it up"
-below); a client-side install is the fallback for clients who'll click
-once.
+whole team lives under Slack's free-plan limits, with project history
+vanishing after 90 days. In the bridge column your team's history lives
+in Buzz, permanently, on your server.
 
 **What the bridge changes — how you wire it up.**
 
@@ -193,14 +192,12 @@ channel at the moment a workspace downgrades (disconnect vs. read-only)
 isn't well documented by Slack — do the downgrade last, after the bridge
 is flowing and history is exported, so nothing is lost if a channel drops.
 
-The honest summary: the bridge doesn't make Slack Connect cheaper — it
-makes it *unnecessary*, by moving the shared channel into the client's
-workspace where no cross-organization sharing (and no paid plan on your
-side) is involved. Even in the cases where Slack Connect is free for you —
-the 90-day trial, or an Enterprise Grid client hosting you — the bridge
-still buys you out of the parts that aren't about money: your team living
-in Slack's free-plan limits, and your client relationships depending on a
-trial clock or another company's admin settings.
+The honest summary: the bridge shrinks your Slack footprint from "a paid
+seat for every teammate" to "one workspace membership" — $0 under Grid
+clients, one seat at most otherwise, and $0 for any client willing to
+click once on the fallback. And beyond money, it moves your team's home
+and history out of Slack's free-plan limits and off the mercy of trial
+clocks and other companies' admin settings.
 
 ## Setup guide (beginner friendly)
 
@@ -211,7 +208,7 @@ The whole journey at a glance:
 
 1. **Get it running** — one command creates your config file.
 2. **Create your Slack app** — clicking through Slack's settings pages.
-3. **Install it into a workspace** — one click on an "Add to Slack" button.
+3. **Install it into your workspace** — one click on an "Add to Slack" button.
 4. **Connect a Slack channel to a Buzz channel** — one command.
 5. **Test it** — send a message each way.
 
@@ -302,9 +299,12 @@ GitHub once the repo is public, with no npm publish needed.
    - Expand **Subscribe to bot events**, click **Add Bot User Event**, and
      add: `message.channels`, `message.groups`, `member_joined_channel`.
    - Click **Save Changes**.
-8. Open **Manage Distribution** and activate **Public Distribution** — this
-   is what lets *other* workspaces (your clients) install the app. The app
-   does not need to be listed in the Slack Marketplace.
+8. *(Only needed for the fallback setup.)* Open **Manage Distribution**
+   and activate **Public Distribution** — this lets workspaces *other than
+   yours* (i.e., a client's, in the fallback) install the app. If every
+   channel will be bridged from your side, you can skip this; it's also
+   harmless to enable now for later. The app never needs to be listed in
+   the Slack Marketplace.
 
    **Is that safe?** Installing the app only ever connects the installer's
    *own* workspace — Slack tokens are workspace-scoped, so no installer can
@@ -381,22 +381,24 @@ the matching thread on the other side.
 ## How it works, slightly more technically
 
 ```
-Client Slack workspaces ──OAuth install──►  /slack/install
-Client Slack messages   ──Events API────►  /slack/events ──► kind:9 (+h tag) ──► buzz-relay
-Buzz replies            ◄──NIP-29 groups── buzz-relay ◄── your team & AI agents
-                        └──► chat.postMessage back into the right Slack thread
+Your workspace (+ any client workspaces, fallback) ──OAuth install──► /slack/install
+Messages in bridged channels (incl. Slack Connect) ──Events API────► /slack/events ──► kind:9 (+h tag) ──► buzz-relay
+Buzz replies ◄──NIP-29 groups── buzz-relay ◄── your team & AI agents
+             └──► chat.postMessage back into the right Slack thread
 ```
 
-A multi-tenant OAuth bridge: any number of client workspaces install a
-"Sign in with Slack" app, and one Node.js service relays messages both
-ways between Slack channels and Buzz channels over the open
+A multi-tenant OAuth bridge: your workspace (and, in the fallback, any
+number of client workspaces) installs a "Sign in with Slack" app, and one
+Node.js service relays messages both ways between Slack channels —
+including Slack Connect shared channels — and Buzz channels over the open
 [Nostr](https://nostr.com) protocol.
 
 ## Under the hood
 
-- **Multi-tenant OAuth** — any number of client workspaces install via a
-  "Sign in with Slack" page; per-workspace bot tokens are stored
-  **encrypted at rest** (AES-256-GCM, tenant-bound) in SQLite.
+- **Multi-tenant OAuth** — any number of workspaces (yours, plus clients'
+  in the fallback setup) install via a "Sign in with Slack" page;
+  per-workspace bot tokens are stored **encrypted at rest** (AES-256-GCM,
+  tenant-bound) in SQLite.
 - **Speaks Buzz's actual protocol** — NIP-29 `kind:9` chat messages with the
   required `h` tag, NIP-42 relay authentication, and NIP-10 marked reply
   tags. Verified against Buzz's published wire format.
@@ -442,12 +444,10 @@ instance, firewall, TLS, and bridge in one shot), and
 Full comparison, requirements, and per-host steps: [docs/HOSTING.md](docs/HOSTING.md).
 
 Nobody hosts this for you: every team runs its own bridge, so your Slack
-tokens and message traffic never touch anyone else's servers.
-**[docs/HOSTING.md](docs/HOSTING.md)** compares the realistic options —
-any $4–6/mo VPS with Docker (recommended default), Oracle Cloud's Always
-Free tier ($0), and managed platforms (Render, Fly.io, Railway) — and
-explains the three hard requirements (always-on process, persistent disk,
-public HTTPS) that rule out serverless hosts and sleeping free tiers.
+tokens and message traffic never touch anyone else's servers. The hosting
+guide also explains the three hard requirements (always-on process,
+persistent disk, public HTTPS) that rule out serverless hosts and
+sleeping free tiers.
 
 The `deploy/` directory has everything ready to run:
 
@@ -470,7 +470,7 @@ The deeper reasoning lives in `docs/ARCHITECTURE-RESEARCH.md`.
 | `SLACK_STATE_SECRET` | OAuth CSRF state secret (set your own in production) |
 | `PUBLIC_BASE_URL` | Public HTTPS base URL of this server |
 | `BUZZ_RELAY_URL` | WebSocket URL of your Buzz relay |
-| `BRIDGE_MASTER_KEY` | 32-byte hex master secret (encryption + signing) |
+| `BRIDGE_MASTER_KEY` | Master secret: 64 hex chars, or any random string ≥32 chars (encryption + signing) |
 | `BRIDGE_KEY_MODE` | `single` (default) or `per-user` derived identities |
 | `SLACK_ALLOWED_TEAMS` | Comma-separated team IDs allowed to install (empty = anyone with the link) |
 | `BRIDGE_DB` | SQLite path (default `./data/bridge.sqlite`) |
