@@ -20,7 +20,9 @@ clients, and you can't stop paying while your team is on it.
 **The fix:** move your team to **Buzz** (a free, open-source team chat you
 host yourself), and let this bridge relay messages both ways — so clients
 keep chatting in Slack like always, your team replies from Buzz, and
-neither side notices anything changed. No team seats, no Slack Connect.
+neither side notices anything changed. The section
+[below](#what-youre-paying-slack-today--and-what-this-changes) details
+exactly which Slack costs this removes and how to downgrade.
 
 There's a second problem it quietly solves too: on Slack, every client
 conversation your business depends on lives on someone else's servers, on
@@ -47,6 +49,56 @@ server (and back). You run it on a server you control — either right next
 to Buzz on the same machine, or anywhere else that can reach both. Nobody
 hosts it for you and nobody sees your messages; there's a $0 hosting
 option, and it's free forever because it's open source.
+
+## What you're paying Slack today — and what this changes
+
+To be precise about the money, here's how Slack's pricing actually works
+for talking to people outside your company, and what the bridge changes.
+
+**How Slack Connect works today.** Slack Connect is Slack's feature for
+sharing a channel between two *different* companies. The catch:
+**every organization in a Slack Connect channel must be on a paid plan**
+(Pro, currently ~$7.25/user/month billed annually, or higher). A free
+workspace cannot start *or* join a Slack Connect channel at all. So if you
+use Slack Connect with clients today, you're paying for a seat for every
+teammate in those channels — and your client must be paying too. The
+common workaround, guest accounts (including the "free" single-channel
+guests), is *also* a paid-plan feature: only a paid workspace can host
+guests.
+
+**What the bridge changes.** A bridged channel isn't a Slack Connect
+channel at all. It's a **regular channel inside the client's own
+workspace** with an app installed — from Slack's point of view there's no
+second organization in the room, so nothing about it requires Slack
+Connect, on either side. That means:
+
+- **Your side: no Slack plan needed at all.** Your team doesn't have Slack
+  accounts — they're in Buzz. You're not in the channel; your bridge is.
+- **The client's side: any plan works, including free.** They're just
+  using a normal channel in their own workspace. In fact, this *enables*
+  something Slack Connect forbids: collaborating with a client who's on
+  Slack's free plan. (One free-plan caveat: free workspaces are limited to
+  about 10 app integrations, and the bridge counts as one.)
+
+**How to actually wind down your Slack bill.** If you're currently on a
+paid plan with Slack Connect channels, the migration looks like this:
+
+1. For each client, ask them to create a **regular channel in their own
+   workspace** and install the bridge there (one click on your `/login`
+   page), replacing the Slack Connect channel.
+2. **Export your Slack history first** (Workspace Settings → Import/Export)
+   — the bridge archives everything *from the day it's installed onward*
+   into Buzz, but it can't reach back in time, and downgrading to Slack's
+   free plan hides messages older than 90 days.
+3. Once every client channel has moved, **downgrade your workspace to the
+   free plan** (Billing → change plan) or close it entirely. Your team's
+   day-to-day moves to Buzz; the bridge keeps the client conversations
+   flowing.
+
+The honest summary: the bridge doesn't make Slack Connect cheaper — it
+makes it *unnecessary*, by moving the shared channel into the client's
+workspace where no cross-organization sharing (and no paid plan on your
+side) is involved.
 
 ## Setup guide (beginner friendly)
 
