@@ -13,13 +13,14 @@
 ## What is this?
 
 **The short version — the problem:** you're paying Slack for a seat for
-every person on your team, mostly so you can talk to clients who live in
-Slack and will never leave it. You can't quit Slack without losing your
+every person on your team — plus **Slack Connect**, the paid feature for
+sharing channels with clients — mostly so you can talk to clients who live
+in Slack and will never leave it. You can't quit Slack without losing your
 clients, and you can't stop paying while your team is on it.
-**The fix:** move your team to a free chat platform you own, and let this
-bridge relay messages both ways — so clients keep chatting in Slack like
-always, your team replies from the free side, and neither one notices
-anything changed.
+**The fix:** move your team to **Buzz** (a free, open-source team chat you
+host yourself), and let this bridge relay messages both ways — so clients
+keep chatting in Slack like always, your team replies from Buzz, and
+neither side notices anything changed. No team seats, no Slack Connect.
 
 There's a second problem it quietly solves too: on Slack, every client
 conversation your business depends on lives on someone else's servers, on
