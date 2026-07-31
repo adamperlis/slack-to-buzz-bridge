@@ -164,19 +164,34 @@ free workspaces are limited to about 10 app integrations, and the bridge
 counts as one.)
 
 **How to actually wind down your Slack bill.** If you're currently on a
-paid plan with Slack Connect channels, the migration looks like this:
+paid plan with Slack Connect channels, the migration follows the main
+setup — clients are never asked to do anything:
 
-1. For each client, ask them to create a **regular channel in their own
-   workspace** and install the bridge there (one click on your `/login`
-   page), replacing the Slack Connect channel.
-2. **Export your Slack history first** (Workspace Settings → Import/Export)
-   — the bridge archives everything *from the day it's installed onward*
-   into Buzz, but it can't reach back in time, and downgrading to Slack's
-   free plan hides messages older than 90 days.
-3. Once every client channel has moved, **downgrade your workspace to the
-   free plan** (Billing → change plan) or close it entirely. Your team's
-   day-to-day moves to Buzz; the bridge keeps the client conversations
-   flowing.
+1. **Install the bridge into your own workspace** and invite the bot into
+   each Slack Connect channel; map each one to a Buzz channel and verify
+   messages flow both ways.
+2. **Move your team's daily work to Buzz.** From this point your
+   teammates stop needing Slack at all.
+3. **Export your Slack history** (Workspace Settings → Import/Export) —
+   the bridge archives everything *from the day it's installed onward*
+   into Buzz, but it can't reach back in time, and the free plan hides
+   messages older than 90 days.
+4. **Shrink the bill.** Remove or deactivate your teammates' Slack seats
+   — Slack bills per active user, so the bridge just turned N seats into
+   however few keep your workspace in the Connect channels. Then:
+   - **All your clients on Enterprise Grid?** Downgrade the workspace all
+     the way to **free** — Grid clients host free teams in Connect
+     channels indefinitely. Bill: **$0**.
+   - **Some clients on Pro/Business+?** A free workspace can't stay in
+     their Connect channels, so keep the workspace paid with a **single
+     seat** (~$8.75/month total) — or move those specific clients to the
+     fallback setup (they install the app, the channel moves to their
+     workspace) and then go to $0.
+
+One caution on step 4: exactly what happens to an existing Connect
+channel at the moment a workspace downgrades (disconnect vs. read-only)
+isn't well documented by Slack — do the downgrade last, after the bridge
+is flowing and history is exported, so nothing is lost if a channel drops.
 
 The honest summary: the bridge doesn't make Slack Connect cheaper — it
 makes it *unnecessary*, by moving the shared channel into the client's
