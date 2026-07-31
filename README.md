@@ -74,10 +74,23 @@ have real nuance, so here they are exactly:
 - Guest accounts (including "free" single-channel guests) are a paid-plan
   feature too: only a paid workspace can host guests.
 
-So the free rides exist, but they're either temporary (90 days) or
-conditional on your client being an Enterprise Grid company that keeps the
-setting enabled — and in every case your team still lives in Slack, with
-free-plan limits (90-day visible history) on your side.
+So yes — if a paid customer invites you, it can genuinely be free. But
+look at what that free ride depends on:
+
+- **If your client is on Pro or Business+** (the typical agency
+  situation): your free access is really a 90-day countdown. When the
+  trial expires, you either start paying for every teammate in the channel
+  or you lose it — and you only ever get that trial once per workspace.
+- **If your client is on Enterprise Grid**: it's free for as long as
+  (a) that client stays big enough to be paying for Grid, (b) their
+  admins keep the "free teams can join" setting switched on, and (c)
+  you're okay with each client relationship living inside *their* org,
+  under *their* settings. Your access is a toggle in someone else's
+  admin panel.
+- **In every case**, your team is still living in Slack on the free plan's
+  limits — most painfully, messages older than 90 days become invisible,
+  which for client work means your project history is constantly
+  evaporating.
 
 **What the bridge changes.** A bridged channel isn't a Slack Connect
 channel at all. It's a **regular channel inside the client's own
