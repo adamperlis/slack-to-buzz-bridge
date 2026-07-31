@@ -48,46 +48,18 @@ to Buzz on the same machine, or anywhere else that can reach both. Nobody
 hosts it for you and nobody sees your messages; there's a $0 hosting
 option, and it's free forever because it's open source.
 
-## How it works, slightly more technically
-
-```
-Client Slack workspaces ──OAuth install──►  /slack/install
-Client Slack messages   ──Events API────►  /slack/events ──► kind:9 (+h tag) ──► buzz-relay
-Buzz replies            ◄──NIP-29 groups── buzz-relay ◄── your team & AI agents
-                        └──► chat.postMessage back into the right Slack thread
-```
-
-A multi-tenant OAuth bridge: any number of client workspaces install a
-"Sign in with Slack" app, and one Node.js service relays messages both
-ways between Slack channels and Buzz channels over the open
-[Nostr](https://nostr.com) protocol.
-
-## Under the hood
-
-- **Multi-tenant OAuth** — any number of client workspaces install via a
-  "Sign in with Slack" page; per-workspace bot tokens are stored
-  **encrypted at rest** (AES-256-GCM, tenant-bound) in SQLite.
-- **Speaks Buzz's actual protocol** — NIP-29 `kind:9` chat messages with the
-  required `h` tag, NIP-42 relay authentication, and NIP-10 marked reply
-  tags. Verified against Buzz's published wire format.
-- **Threading, both directions** — Slack `thread_ts` maps to Nostr reply
-  tags and back; a reply in either system lands in the right thread in the
-  other.
-- **High-fidelity formatting** — parses Slack `rich_text` blocks (lists,
-  quotes, code, mentions) and converts emoji using the same
-  [emoji-data](https://github.com/iamcal/emoji-data) set Slack itself uses.
-- **Echo-loop prevention by cryptography** — the bridge skips events signed
-  by its own keys (pubkey check), plus the `[Slack -` content guard and
-  Slack-side `bot_id` filtering.
-- **Attribution** — Buzz authors appear in Slack by their kind:0 profile
-  name; Slack authors appear in Buzz by real name, or (in `per-user` key
-  mode) as individual derived Nostr identities that support native
-  deletions.
-
 ## Setup guide (beginner friendly)
 
-This walks you from nothing to a working bridge. No prior experience with
-Slack apps or Nostr needed. Budget 30–45 minutes.
+This walks you from nothing to a working bridge, step by step. No prior
+experience with Slack apps or Nostr needed. Budget 30–45 minutes.
+
+The whole journey at a glance:
+
+1. **Get it running** — one command creates your config file.
+2. **Create your Slack app** — clicking through Slack's settings pages.
+3. **Install it into a workspace** — one click on an "Add to Slack" button.
+4. **Connect a Slack channel to a Buzz channel** — one command.
+5. **Test it** — send a message each way.
 
 ### What you'll need
 
@@ -101,7 +73,8 @@ Slack apps or Nostr needed. Budget 30–45 minutes.
   self-hostable: [github.com/block/buzz](https://github.com/block/buzz).
 - **A public HTTPS address for the bridge.** Slack refuses to talk to plain
   `http://localhost`. For a real deployment use a domain + server (see
-  [Deployment](#deployment)); to just try it out, a free tunnel works:
+  [Deployment](#deployment--you-host-it-yourself)); to just try it out, a
+  free tunnel works:
   install [cloudflared](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/)
   and run `cloudflared tunnel --url http://localhost:3000` — it prints a
   public `https://…trycloudflare.com` address that forwards to your machine.
@@ -235,6 +208,42 @@ the matching thread on the other side.
 | Slack messages don't reach Buzz | Channel not mapped (step 4), or relay rejected the bridge's pubkey — check the terminal for `auth-required`/`restricted` errors |
 | Buzz messages don't reach Slack | Mapping missing, or the bot was never invited to the Slack channel |
 | Bridge exits immediately at start | A required `.env` value is missing — the error message names it |
+
+## How it works, slightly more technically
+
+```
+Client Slack workspaces ──OAuth install──►  /slack/install
+Client Slack messages   ──Events API────►  /slack/events ──► kind:9 (+h tag) ──► buzz-relay
+Buzz replies            ◄──NIP-29 groups── buzz-relay ◄── your team & AI agents
+                        └──► chat.postMessage back into the right Slack thread
+```
+
+A multi-tenant OAuth bridge: any number of client workspaces install a
+"Sign in with Slack" app, and one Node.js service relays messages both
+ways between Slack channels and Buzz channels over the open
+[Nostr](https://nostr.com) protocol.
+
+## Under the hood
+
+- **Multi-tenant OAuth** — any number of client workspaces install via a
+  "Sign in with Slack" page; per-workspace bot tokens are stored
+  **encrypted at rest** (AES-256-GCM, tenant-bound) in SQLite.
+- **Speaks Buzz's actual protocol** — NIP-29 `kind:9` chat messages with the
+  required `h` tag, NIP-42 relay authentication, and NIP-10 marked reply
+  tags. Verified against Buzz's published wire format.
+- **Threading, both directions** — Slack `thread_ts` maps to Nostr reply
+  tags and back; a reply in either system lands in the right thread in the
+  other.
+- **High-fidelity formatting** — parses Slack `rich_text` blocks (lists,
+  quotes, code, mentions) and converts emoji using the same
+  [emoji-data](https://github.com/iamcal/emoji-data) set Slack itself uses.
+- **Echo-loop prevention by cryptography** — the bridge skips events signed
+  by its own keys (pubkey check), plus the `[Slack -` content guard and
+  Slack-side `bot_id` filtering.
+- **Attribution** — Buzz authors appear in Slack by their kind:0 profile
+  name; Slack authors appear in Buzz by real name, or (in `per-user` key
+  mode) as individual derived Nostr identities that support native
+  deletions.
 
 ## Deployment — you host it yourself
 
