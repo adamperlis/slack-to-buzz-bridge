@@ -37,6 +37,10 @@ CREATE TABLE IF NOT EXISTS buzz_profiles (
   name       TEXT,
   updated_at INTEGER NOT NULL
 );
+CREATE TABLE IF NOT EXISTS settings (
+  key   TEXT PRIMARY KEY,
+  value TEXT NOT NULL
+);
 `;
 
 export class BridgeDB {
@@ -91,6 +95,12 @@ export class BridgeDB {
          ON CONFLICT(pubkey) DO UPDATE SET name = excluded.name, updated_at = excluded.updated_at`
       ),
       getProfile: this.db.prepare('SELECT * FROM buzz_profiles WHERE pubkey = ?'),
+
+      getSetting: this.db.prepare('SELECT value FROM settings WHERE key = ?'),
+      setSetting: this.db.prepare(
+        `INSERT INTO settings (key, value) VALUES (?, ?)
+         ON CONFLICT(key) DO UPDATE SET value = excluded.value`
+      ),
     };
   }
 
@@ -125,6 +135,9 @@ export class BridgeDB {
 
   saveProfile(pubkey, name) { this.stmts.upsertProfile.run(pubkey, name, Date.now()); }
   profileName(pubkey) { return this.stmts.getProfile.get(pubkey)?.name; }
+
+  getSetting(key) { return this.stmts.getSetting.get(key)?.value; }
+  setSetting(key, value) { this.stmts.setSetting.run(key, value); }
 
   close() { this.db.close(); }
 }

@@ -137,6 +137,13 @@ describe('db', () => {
     assert.equal(db.userByPubkey('ab'.repeat(32)).slack_user_id, 'U1');
   });
 
+  test('round-trips settings', () => {
+    assert.equal(db.getSetting('missing'), undefined);
+    db.setSetting('key_mode', 'single');
+    db.setSetting('key_mode', 'per-user');
+    assert.equal(db.getSetting('key_mode'), 'per-user');
+  });
+
   test('maps message ids in both directions for threading', () => {
     db.recordMessage('C1', '1000.001', 'evt-aaa', 's2b');
     db.recordMessage('C1', '1000.002', 'evt-bbb', 'b2s');

@@ -45,7 +45,13 @@ try {
 }
 
 const PUBLIC_BASE_URL = process.env.PUBLIC_BASE_URL.replace(/\/+$/, '');
-const KEY_MODE = process.env.BRIDGE_KEY_MODE === 'per-user' ? 'per-user' : 'single';
+// Strict, not defaulting: a typo like "per_user" silently falling back to
+// single-key mode would change signing and echo-guard behavior unnoticed.
+const KEY_MODE = process.env.BRIDGE_KEY_MODE || 'single';
+if (KEY_MODE !== 'single' && KEY_MODE !== 'per-user') {
+  console.error(`BRIDGE_KEY_MODE must be 'single' or 'per-user' (got '${KEY_MODE}').`);
+  process.exit(1);
+}
 const DB_PATH = process.env.BRIDGE_DB || './data/bridge.sqlite';
 const SCOPES = ['chat:write', 'channels:history', 'channels:read', 'groups:history', 'users:read'];
 
@@ -56,6 +62,38 @@ const bridgePubkey = getPublicKey(bridgeKey);
 
 fs.mkdirSync(path.dirname(DB_PATH), { recursive: true });
 const db = new BridgeDB(DB_PATH);
+
+// Config-edge guards: fail fast and loud when the configuration disagrees
+// with what this database was created under.
+//
+// 1. Master key change: stored tokens were encrypted under the old key, so
+//    every decrypt would fail cryptically at event time. Refuse to start
+//    instead. (Intentional reset: delete the DB, or set
+//    BRIDGE_ACCEPT_NEW_MASTER_KEY=1 once to adopt the new key — stored
+//    workspaces will need reinstalling.)
+const storedKeyId = db.getSetting('master_key_pubkey');
+if (storedKeyId && storedKeyId !== bridgePubkey) {
+  if (process.env.BRIDGE_ACCEPT_NEW_MASTER_KEY === '1') {
+    console.warn('⚠️  BRIDGE_MASTER_KEY changed and BRIDGE_ACCEPT_NEW_MASTER_KEY=1 — adopting the new key. Previously stored workspace tokens can no longer be decrypted; those workspaces must reinstall.');
+    db.setSetting('master_key_pubkey', bridgePubkey);
+  } else {
+    console.error('BRIDGE_MASTER_KEY does not match the key this database was created with.');
+    console.error('Stored Slack tokens cannot be decrypted under a different key. Either restore');
+    console.error('the original key, or set BRIDGE_ACCEPT_NEW_MASTER_KEY=1 to adopt the new key');
+    console.error('(all installed workspaces will need to reinstall).');
+    process.exit(1);
+  }
+} else if (!storedKeyId) {
+  db.setSetting('master_key_pubkey', bridgePubkey);
+}
+
+// 2. Key-mode switch: safe in both directions (pubkey backfill covers
+//    single→per-user), but worth a loud line in the logs.
+const storedMode = db.getSetting('key_mode');
+if (storedMode && storedMode !== KEY_MODE) {
+  console.warn(`⚠️  BRIDGE_KEY_MODE changed: ${storedMode} → ${KEY_MODE}. Existing messages keep their original signatures; new messages use the new mode.`);
+}
+db.setSetting('key_mode', KEY_MODE);
 
 // ---------------------------------------------------------------------------
 // One-time migration from the v1 database.json flat file
