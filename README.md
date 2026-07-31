@@ -185,6 +185,13 @@ then **Allow**. That's the whole install flow — the same link works for
 your clients, in their own workspaces. The bridge stores each workspace's
 access token encrypted.
 
+**Who has to do this?** Exactly one person per Slack workspace, one time.
+The install is workspace-level: it adds a single bot for everyone, so
+teammates and clients in the channel never install anything themselves.
+(The clicker needs permission to install apps in their workspace — in many
+workspaces any member can; some restrict it to admins.) And your own
+internal team installs nothing anywhere — they just use Buzz.
+
 ### Step 4 — Connect a Slack channel to a Buzz channel
 
 1. In Slack, open the channel you want to bridge and invite the bot:
