@@ -34,9 +34,13 @@ This bridge connects the two. You set it up once, and then:
 - **Your clients never know the difference.** They just see replies in
   Slack like always. Meanwhile your team stopped paying for Slack.
 
-Nobody hosts this for you and nobody sees your messages — you run the
-bridge on your own server (there's a $0 option), and it's free forever
-because it's open source.
+**Where does it run?** The bridge is its own small program — it doesn't
+install into Slack or into Buzz. It's a messenger that sits between them:
+Slack sends it messages over the web, and it passes them to your Buzz
+server (and back). You run it on a server you control — either right next
+to Buzz on the same machine, or anywhere else that can reach both. Nobody
+hosts it for you and nobody sees your messages; there's a $0 hosting
+option, and it's free forever because it's open source.
 
 ## How it works, slightly more technically
 
