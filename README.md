@@ -51,6 +51,25 @@ to Buzz on the same machine, or anywhere else that can reach both. Nobody
 hosts it for you and nobody sees your messages; there's a $0 hosting
 option, and it's free forever because it's open source.
 
+## Who's who — the terms this document uses
+
+| Term | Who that is | What they do | What they install |
+|---|---|---|---|
+| **You** (the operator) | The person setting all this up — probably the one reading this | Runs the bridge server, owns the Slack app, connects the channels | Everything: the bridge, the Slack app, the mappings |
+| **Your team** | The people (and AI agents) you work with | Chat in **Buzz** only — they never touch Slack | Nothing |
+| **A client** | A company you serve whose people live in Slack | Chat in their Slack channels exactly as they always have | **Nothing** (in the main setup) |
+| **A client contact** | One person at a client, *fallback setup only* | Clicks "Add to Slack" once, if that client hosts the channel | One app, one click |
+| **Your workspace** | Your own Slack workspace (free plan) | Sits in the Slack Connect channels clients invited you to; hosts the bridge app in the main setup | — |
+| **A client workspace** | A client's own Slack workspace | Hosts the shared channel (and, in the fallback, the app) | — |
+| **A Slack admin** | Whoever can install apps in a given workspace | Approves the app install in that workspace — often any member, sometimes admins only | — |
+| **The Buzz admin** | Whoever runs your Buzz hive — usually also you | Allowlists the bridge's key on the relay, adds it to Buzz channels, once | — |
+| **The bot** | The bridge's face inside Slack | Sits in bridged channels relaying messages; looks like any other app bot | — |
+| **The bridge** | This software, running on your server | Relays messages both ways, stores tokens encrypted, maps threads | — |
+
+The one-sentence version: **you** set everything up once, **your team**
+lives in Buzz, **clients** keep using Slack and never know the plumbing
+changed.
+
 ## What you're paying Slack today — and what this changes
 
 To be precise about the money, here's how Slack's pricing actually works
