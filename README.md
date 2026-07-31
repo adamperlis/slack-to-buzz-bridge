@@ -371,6 +371,16 @@ Manager stack (upload, fill a form, Apply — it builds the free ARM
 instance, firewall, TLS, and bridge in one shot), and
 `deploy/setup-vps.sh` bootstraps any ordinary Ubuntu VPS in one command.
 
+| Host | Monthly cost | Deploy experience |
+|---|---|---|
+| Oracle Cloud free tier | **$0** | Upload stack zip → fill form → Apply |
+| Render | ~$7 + disk | ✅ One-click button |
+| Fly.io | ~$3–5 | Config included, 4 CLI commands |
+| Railway | ~$5 usage-based | Config included + dashboard clicks |
+| Any VPS | ~$4–6 | One bootstrap command, edit 2 files |
+
+Full comparison, requirements, and per-host steps: [docs/HOSTING.md](docs/HOSTING.md).
+
 Nobody hosts this for you: every team runs its own bridge, so your Slack
 tokens and message traffic never touch anyone else's servers.
 **[docs/HOSTING.md](docs/HOSTING.md)** compares the realistic options —

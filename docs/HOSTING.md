@@ -26,16 +26,20 @@ below allows that.
 
 ## Which option is right for you?
 
-| Option | Cost | Effort | Notes |
+| Option | Monthly cost | One-click deploy? | What the automation covers |
 |---|---|---|---|
-| **Oracle Cloud Always Free** | $0 | High (one-time) | The 100%-free path; can co-host Buzz itself. See [`deploy/oci-setup.md`](../deploy/oci-setup.md) |
-| **Any VPS** (Hetzner, DigitalOcean, Lightsail…) | ~$4–6/mo | Medium | Simplest mental model; steps below |
-| **Render** | ~$7/mo + disk | Low | Paid instance required — the free tier sleeps after 15 min and can't attach a disk, which breaks requirements 1 and 2 |
-| **Fly.io** | ~$3–5/mo | Low-medium | Small always-on machine + volume |
-| **Railway** | usage-based (~$5/mo) | Low | Dockerfile deploy + volume |
-| ❌ Vercel / Netlify / Cloudflare Workers | — | — | Serverless: no long-lived WebSocket, no disk. Not usable |
+| **Oracle Cloud Always Free** | **$0** | 🟡 **Form-based stack** — upload [`deploy/oci/`](../deploy/oci/) as a Resource Manager zip, fill a form, Apply | Everything: network, firewall, free ARM instance, Docker, TLS, bridge, generated master key. Remaining by hand: DNS record + the two Slack app URLs |
+| **Render** | ~$7 + ~$0.25/GB disk | ✅ **True button** — [Deploy to Render](https://render.com/deploy?repo=https://github.com/adamperlis/slack-to-buzz-bridge) reads `render.yaml` | Service, disk, health check, generated secrets, auto-detected URL. You type only the 4 Slack/Buzz values. (Free tier can't work: sleeps + no disk) |
+| **Fly.io** | ~$3–5 | 🟡 **Config file + 4 CLI commands** — repo's `fly.toml` | Build, volume mount, always-on machines, health check, auto-detected URL. You run `fly launch/volumes/secrets/deploy` |
+| **Railway** | usage-based, ~$5 | 🟡 **Config file + dashboard clicks** — repo's `railway.json` | Build + health check on repo connect. You add the volume, env vars, and public domain in their UI |
+| **Any VPS** (Hetzner, DigitalOcean, Lightsail…) | ~$4–6 | 🟡 **One-command bootstrap** — [`deploy/setup-vps.sh`](../deploy/setup-vps.sh) | Docker install, clone, `.env` scaffold with generated key. You edit 2 files and run compose |
+| ❌ Vercel / Netlify / Cloudflare Workers | — | — | Not usable at any price: serverless has no long-lived WebSocket and no disk |
 
-Prices are mid-2026 ballparks — check current pricing before committing.
+Legend: ✅ click-and-form only · 🟡 automated, with a few manual steps.
+No option is fully zero-touch — every path ends with pointing your Slack
+app's two URLs at the new server, and all except Render/Fly/Railway need
+a DNS record. Prices are mid-2026 ballparks — check current pricing
+before committing.
 
 One more decision: **where is your Buzz hive?** If your team already hosts
 Buzz somewhere, the bridge can live anywhere that reaches the relay URL.
