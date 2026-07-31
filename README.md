@@ -92,18 +92,22 @@ look at what that free ride depends on:
   which for client work means your project history is constantly
   evaporating.
 
-**At a glance — you're on Slack's free plan, what does talking to each
-client cost?**
+**At a glance — what does talking to each client cost you?** The Slack
+Connect column assumes the best case for Slack: your team downgraded to
+Slack's free plan and stays in Slack. The bridge column is a different
+world: your team isn't on Slack at all, so *your* Slack plan stops being
+a question that exists.
 
-| Your client's Slack plan | Via Slack Connect | Via this bridge |
+| Your client's Slack plan | Slack Connect (your team on Slack, free plan) | This bridge (your team on Buzz, no Slack) |
 |---|---|---|
-| **Enterprise Grid** (big-company tier) | ✅ Free indefinitely — *but* only while their admins keep the "free teams can join" setting on, and you work inside their org | ✅ Free, no strings |
-| **Pro or Business+** (typical paid team) | ⏳ Free for 90 days (one-time trial per workspace), then **~$7.25+/month for every teammate** in the channel — or you lose access | ✅ Free |
-| **Free plan** | ❌ Impossible — Slack Connect requires paid plans, so you can't share a channel with them at all | ✅ Free — works fine |
+| **Enterprise Grid** (big-company tier) | ✅ Free indefinitely — *but* only while their admins keep the "free teams can join" setting on, and you work inside their org | ✅ Free — client installs the app in their own workspace |
+| **Pro or Business+** (typical paid team) | ⏳ Free for 90 days (one-time trial per workspace), then **~$7.25+/month for every teammate** in the channel — or you lose access | ✅ Free — same, nothing changes by their tier |
+| **Free plan** | ❌ Impossible — Slack Connect requires paid plans, so you can't share a channel with them at all | ✅ Free — the one way to bridge a free-plan client at all |
 
-Either Slack Connect column also assumes your team keeps living in Slack
-under free-plan limits (project history vanishing after 90 days). The
-bridge column assumes only that the client installs the app in their own
+And the Slack Connect column carries a hidden cost in every row: your
+team still lives under Slack's free-plan limits, with project history
+vanishing after 90 days. The bridge column's only requirement, in every
+row, is the same one click: the client installs the app in their own
 workspace.
 
 **What the bridge changes.** A bridged channel isn't a Slack Connect
