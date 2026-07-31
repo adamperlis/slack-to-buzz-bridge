@@ -199,7 +199,10 @@ after(async () => {
   slackServer.close();
 });
 
-test('bridge authenticates to the relay via NIP-42', () => {
+test('bridge authenticates to the relay via NIP-42', async () => {
+  // The REQ (which before() waits on) can arrive before the AUTH response
+  // finishes its round-trip — auth is eventual, so wait for it.
+  await waitFor(() => relayState.authedSockets.size === 1);
   assert.equal(relayState.authedSockets.size, 1);
 });
 
