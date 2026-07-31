@@ -1,5 +1,15 @@
 # slack-to-buzz-bridge
 
+> [!WARNING]
+> **⚠️ Experimental — not yet tested against a live deployment. Use with
+> caution.** This bridge has a passing automated test suite (including an
+> integration run against a mock relay that enforces Buzz's documented
+> wire format), but it has **not** yet been validated against a real,
+> running Buzz relay or used in production with real Slack workspaces.
+> Buzz itself is brand new and evolving quickly, so its protocol details
+> may shift. Test thoroughly in a sandbox before trusting it with client
+> conversations, and expect rough edges. Bug reports are very welcome.
+
 A free, open-source, multi-tenant bridge between **Slack** and
 **[Buzz](https://github.com/block/buzz)** — Block's decentralized, self-hosted
 workplace platform built on the open [Nostr](https://nostr.com) protocol.
