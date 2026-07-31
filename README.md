@@ -12,18 +12,21 @@
 
 ## What is this?
 
-**The short version — the problem:** you're paying Slack for a seat for
-every person on your team — plus **Slack Connect**, the paid feature for
-sharing channels with clients — mostly so you can talk to clients who live
-in Slack and will never leave it. You can't quit Slack without losing your
-clients, and you can't stop paying while your team is on it.
+**The short version — the problem:** your team wants to be done with
+Slack. You'd rather work out of tools you own — but your clients live in
+Slack and will never leave it, so someone on your side has to keep Slack
+open forever just to serve them. Often you're paying for the privilege
+too: a seat for every teammate, plus **Slack Connect**, the paid feature
+for sharing channels with clients.
 **The fix:** move your team to **Buzz** (a free, open-source team chat you
 host yourself), and let this bridge relay messages both ways — so clients
-keep chatting in Slack like always, your team replies from Buzz, and
-neither side notices anything changed. Everything installs on **your**
-side: clients never add an app, approve anything, or change how they work. The section
+keep chatting in Slack like always, your team lives entirely in Buzz, and
+neither side notices anything changed. Slack becomes a client-facing
+wire, not a place anyone on your team works. Everything installs on
+**your** side: clients never add an app, approve anything, or change how
+they work. The section
 [below](#what-youre-paying-slack-today--and-what-this-changes) details
-exactly which Slack costs this removes and how to downgrade.
+what this does to your Slack costs and how to downgrade.
 
 There's a second problem it quietly solves too: on Slack, every client
 conversation your business depends on lives on someone else's servers, on
@@ -41,7 +44,8 @@ This bridge connects the two. You set it up once, and then:
 - Your teammate (or your AI agent) replies in Buzz → it shows up back in
   the Slack channel, in the right thread.
 - **Your clients never know the difference.** They just see replies in
-  Slack like always. Meanwhile your team stopped paying for Slack.
+  Slack like always. Meanwhile nobody on your team opens Slack anymore —
+  and in most setups, nobody pays for it either.
 
 **Where does it run?** The bridge is its own small program — it doesn't
 install into Slack or into Buzz. It's a messenger that sits between them:
