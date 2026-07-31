@@ -29,3 +29,9 @@ Deployers should understand these properties of the bridge:
   bridge's signing pubkey, never as instructions.
 - **OAuth state** is CSRF-protected by Bolt; set your own `SLACK_STATE_SECRET`
   in production rather than relying on the default.
+- **Public distribution is workspace-scoped.** An installer only ever
+  connects their own workspace; no install can grant access to another
+  workspace's data. Unsolicited installs (strangers connecting their
+  workspace to your server) are mitigated by the `SLACK_ALLOWED_TEAMS`
+  allowlist — set it once you know your clients' team IDs — and by the
+  fact that unmapped channels never bridge anywhere.

@@ -252,6 +252,15 @@ GitHub once the repo is public, with no npm publish needed.
    is what lets *other* workspaces (your clients) install the app. The app
    does not need to be listed in the Slack Marketplace.
 
+   **Is that safe?** Installing the app only ever connects the installer's
+   *own* workspace — Slack tokens are workspace-scoped, so no installer can
+   see anyone else's Slack. The residual concern is strangers connecting
+   *their* workspace to *your* server if the link leaks. Two protections:
+   messages never bridge from channels you haven't explicitly mapped, and
+   once you know your clients' workspace IDs you should set
+   `SLACK_ALLOWED_TEAMS` in `.env` — installs from any other workspace are
+   then rejected outright.
+
 ### Step 3 — Install it into a workspace
 
 Open `https://YOUR-ADDRESS/login` in a browser and click **Add to Slack**,
@@ -378,6 +387,7 @@ The deeper reasoning lives in `docs/ARCHITECTURE-RESEARCH.md`.
 | `BUZZ_RELAY_URL` | WebSocket URL of your Buzz relay |
 | `BRIDGE_MASTER_KEY` | 32-byte hex master secret (encryption + signing) |
 | `BRIDGE_KEY_MODE` | `single` (default) or `per-user` derived identities |
+| `SLACK_ALLOWED_TEAMS` | Comma-separated team IDs allowed to install (empty = anyone with the link) |
 | `BRIDGE_DB` | SQLite path (default `./data/bridge.sqlite`) |
 | `PORT` | HTTP port (default 3000) |
 

@@ -91,13 +91,22 @@ const receiver = new ExpressReceiver({
   installationStore: {
     storeInstallation: async (installation) => {
       const teamId = installation.team?.id || installation.enterprise?.id;
+      // Install allowlist: with public distribution on, anyone who finds the
+      // install link could connect their workspace to this bridge. Unknown
+      // teams are rejected before their token is ever stored.
+      const allowed = (process.env.SLACK_ALLOWED_TEAMS || '')
+        .split(',').map((t) => t.trim()).filter(Boolean);
+      if (allowed.length > 0 && !allowed.includes(teamId)) {
+        console.warn(`⛔ Rejected install from non-allowlisted workspace ${teamId} (${installation.team?.name || 'unknown name'})`);
+        throw new Error(`Workspace ${teamId} is not authorized to install this bridge.`);
+      }
       db.saveWorkspace(
         teamId,
         encryptSecret(masterKey, installation.bot.token, teamId),
         installation.bot.id,
         installation.bot.userId
       );
-      console.log(`✅ Workspace installed: ${teamId}`);
+      console.log(`✅ Workspace installed: ${teamId} (${installation.team?.name || 'unknown name'})${allowed.length === 0 ? ' — note: no SLACK_ALLOWED_TEAMS allowlist is set' : ''}`);
     },
     fetchInstallation: async (installQuery) => {
       const ws = db.getWorkspace(installQuery.teamId);
