@@ -12,13 +12,18 @@
 
 ## What is this?
 
-**The short version: your clients keep chatting in Slack, your team reads
-and replies from somewhere free — and neither side has to change anything.**
+**The short version — the problem:** you're paying Slack for a seat for
+every person on your team, mostly so you can talk to clients who live in
+Slack and will never leave it. You can't quit Slack without losing your
+clients, and you can't stop paying while your team is on it.
+**The fix:** move your team to a free chat platform you own, and let this
+bridge relay messages both ways — so clients keep chatting in Slack like
+always, your team replies from the free side, and neither one notices
+anything changed.
 
-Here's the situation this solves. Slack is where your clients live, and
-asking them to switch apps is a non-starter. But paying for Slack seats for
-your whole team — plus Slack Connect for shared channels — gets expensive
-fast, and your conversations live on someone else's servers.
+There's a second problem it quietly solves too: on Slack, every client
+conversation your business depends on lives on someone else's servers, on
+someone else's terms. Self-hosting means your message history is yours.
 
 **[Buzz](https://github.com/block/buzz)** is a new, free, open-source team
 chat platform from Block (Jack Dorsey's company). You run it yourself, you
