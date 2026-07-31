@@ -101,3 +101,14 @@ subscriptions automatically — no restart needed.
 | `database.json` | Flat-file store: workspace tokens, channel maps, user directory (git-ignored — holds secrets) |
 | `database.example.json` | Schema reference with mock values |
 | `.env.example` | Environment template — copy to `.env` |
+
+## Contributing & security
+
+Contributions are welcome — see [CONTRIBUTING.md](CONTRIBUTING.md) for dev
+setup and guidelines. For security-sensitive reports, see
+[SECURITY.md](SECURITY.md); please don't file public issues for
+vulnerabilities.
+
+## License
+
+[MIT](LICENSE)
