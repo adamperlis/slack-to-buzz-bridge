@@ -56,15 +56,28 @@ To be precise about the money, here's how Slack's pricing actually works
 for talking to people outside your company, and what the bridge changes.
 
 **How Slack Connect works today.** Slack Connect is Slack's feature for
-sharing a channel between two *different* companies. The catch:
-**every organization in a Slack Connect channel must be on a paid plan**
-(Pro, currently ~$7.25/user/month billed annually, or higher). A free
-workspace cannot start *or* join a Slack Connect channel at all. So if you
-use Slack Connect with clients today, you're paying for a seat for every
-teammate in those channels — and your client must be paying too. The
-common workaround, guest accounts (including the "free" single-channel
-guests), is *also* a paid-plan feature: only a paid workspace can host
-guests.
+sharing a channel between two *different* companies. The billing rules
+have real nuance, so here they are exactly:
+
+- **The standard rule:** every organization in a Slack Connect channel is
+  on a paid plan (Pro, currently ~$7.25/user/month billed annually, or
+  higher). A free workspace can't *start* a Slack Connect channel, ever.
+- **"But I was invited for free!"** Two real exceptions explain this:
+  1. A free team invited by a paid org can accept via a **one-time 90-day
+     Pro trial** (no credit card). When the trial ends, that workspace has
+     to pay to keep participating — and the trial applies once per
+     workspace, ever.
+  2. If the inviting company is on **Enterprise Grid** (Slack's big-company
+     tier), free teams can join channels in *that org* indefinitely without
+     paying — it's a Grid admin setting, on by default. Genuinely free, but
+     only while a Grid-level client is hosting you, under their settings.
+- Guest accounts (including "free" single-channel guests) are a paid-plan
+  feature too: only a paid workspace can host guests.
+
+So the free rides exist, but they're either temporary (90 days) or
+conditional on your client being an Enterprise Grid company that keeps the
+setting enabled — and in every case your team still lives in Slack, with
+free-plan limits (90-day visible history) on your side.
 
 **What the bridge changes.** A bridged channel isn't a Slack Connect
 channel at all. It's a **regular channel inside the client's own
@@ -98,7 +111,11 @@ paid plan with Slack Connect channels, the migration looks like this:
 The honest summary: the bridge doesn't make Slack Connect cheaper — it
 makes it *unnecessary*, by moving the shared channel into the client's
 workspace where no cross-organization sharing (and no paid plan on your
-side) is involved.
+side) is involved. Even in the cases where Slack Connect is free for you —
+the 90-day trial, or an Enterprise Grid client hosting you — the bridge
+still buys you out of the parts that aren't about money: your team living
+in Slack's free-plan limits, and your client relationships depending on a
+trial clock or another company's admin settings.
 
 ## Setup guide (beginner friendly)
 
