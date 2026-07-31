@@ -92,6 +92,20 @@ look at what that free ride depends on:
   which for client work means your project history is constantly
   evaporating.
 
+**At a glance — you're on Slack's free plan, what does talking to each
+client cost?**
+
+| Your client's Slack plan | Via Slack Connect | Via this bridge |
+|---|---|---|
+| **Enterprise Grid** (big-company tier) | ✅ Free indefinitely — *but* only while their admins keep the "free teams can join" setting on, and you work inside their org | ✅ Free, no strings |
+| **Pro or Business+** (typical paid team) | ⏳ Free for 90 days (one-time trial per workspace), then **~$7.25+/month for every teammate** in the channel — or you lose access | ✅ Free |
+| **Free plan** | ❌ Impossible — Slack Connect requires paid plans, so you can't share a channel with them at all | ✅ Free — works fine |
+
+Either Slack Connect column also assumes your team keeps living in Slack
+under free-plan limits (project history vanishing after 90 days). The
+bridge column assumes only that the client installs the app in their own
+workspace.
+
 **What the bridge changes.** A bridged channel isn't a Slack Connect
 channel at all. It's a **regular channel inside the client's own
 workspace** with an app installed — from Slack's point of view there's no
