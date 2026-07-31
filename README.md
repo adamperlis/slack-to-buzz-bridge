@@ -67,27 +67,40 @@ Slack apps or Nostr needed. Budget 30–45 minutes.
   and run `cloudflared tunnel --url http://localhost:3000` — it prints a
   public `https://…trycloudflare.com` address that forwards to your machine.
 
-### Step 1 — Get the code running
+### Step 1 — Get it running
+
+The easiest path needs no download at all — `npx` fetches and runs it:
+
+```bash
+mkdir my-bridge && cd my-bridge
+npx slack-to-buzz-bridge init    # creates .env with a generated master key
+```
+
+`init` writes a `.env` config file and generates your **master key** (the
+secret that encrypts stored Slack tokens and signs the bridge's messages)
+for you. Open `.env` in any text editor — you'll fill in the Slack values
+in the next step. **Treat the file like a password — never share or commit
+it.**
+
+Later, `npx slack-to-buzz-bridge` starts the bridge and
+`npx slack-to-buzz-bridge map …` connects channels.
+
+<details>
+<summary>Prefer a git checkout? (contributors, or before the npm package is published)</summary>
 
 ```bash
 git clone https://github.com/adamperlis/slack-to-buzz-bridge.git
 cd slack-to-buzz-bridge
 npm install
 cp .env.example .env
+node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"  # → BRIDGE_MASTER_KEY
+npm start        # instead of: npx slack-to-buzz-bridge
+npm run map --   # instead of: npx slack-to-buzz-bridge map
 ```
 
-(No `git`? Use GitHub's green **Code → Download ZIP** button and unzip it.)
-
-Generate your master key — one secret that encrypts stored Slack tokens and
-signs the bridge's messages:
-
-```bash
-node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
-```
-
-Copy the 64-character output. Open `.env` in any text editor and paste it
-after `BRIDGE_MASTER_KEY=`. **Treat this like a password — never share it
-or commit it.**
+`npx github:adamperlis/slack-to-buzz-bridge` also works directly from
+GitHub once the repo is public, with no npm publish needed.
+</details>
 
 ### Step 2 — Create your Slack app
 
@@ -112,7 +125,7 @@ or commit it.**
    next click:
 
    ```bash
-   npm start
+   npx slack-to-buzz-bridge
    ```
 
 7. Back in the Slack app settings, open **Event Subscriptions**:
@@ -145,7 +158,7 @@ access token encrypted.
 4. Run the mapping command:
 
    ```bash
-   npm run map -- C0123456789 your-buzz-channel-uuid
+   npx slack-to-buzz-bridge map C0123456789 your-buzz-channel-uuid
    ```
 
 The running bridge picks up new mappings within 15 seconds — no restart.

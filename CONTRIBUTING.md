@@ -36,6 +36,18 @@ pass before opening a PR; add coverage for any new pipeline behavior.
 - One logical change per PR, with a clear description of the behavior change
   and how you verified it.
 
+## Releasing to npm (maintainers)
+
+The package publishes as `slack-to-buzz-bridge` with a `bin` entry, so
+users can run it via `npx slack-to-buzz-bridge`. To cut a release:
+
+```bash
+npm version minor          # or patch/major — bumps package.json + tags
+npm pack --dry-run         # sanity-check the file list (no .env, no data/)
+npm publish                # requires npm login as the package owner
+git push && git push --tags
+```
+
 ## Reporting bugs
 
 Open a GitHub issue with reproduction steps, expected vs. actual behavior,

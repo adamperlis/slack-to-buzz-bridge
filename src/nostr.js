@@ -37,7 +37,9 @@ export class BuzzClient {
         return;
       } catch (e) {
         const delay = Math.min(30000, 2000 * 2 ** attempt++);
-        this.log.error(`Relay connect failed (${e.message}), retrying in ${delay / 1000}s`);
+        // nostr-tools sometimes rejects with a bare string or event object
+        const reason = e?.message || (typeof e === 'string' ? e : 'connection failed');
+        this.log.error(`Relay connect failed (${reason}), retrying in ${delay / 1000}s`);
         await new Promise((r) => setTimeout(r, delay));
       }
     }

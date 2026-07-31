@@ -1,7 +1,18 @@
 {
-  "name": "slack-buzz-bridge",
-  "version": "1.0.0",
+  "name": "slack-to-buzz-bridge",
+  "version": "1.1.0",
   "description": "Multi-tenant OAuth bridge between Slack channels and Buzz (Nostr) rooms",
+  "bin": {
+    "slack-to-buzz-bridge": "bin/cli.js"
+  },
+  "files": [
+    "server.js",
+    "src/",
+    "bin/",
+    "deploy/",
+    "README.md",
+    "LICENSE"
+  ],
   "license": "MIT",
   "repository": {
     "type": "git",

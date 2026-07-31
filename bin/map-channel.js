@@ -5,7 +5,8 @@ import { BridgeDB } from '../src/db.js';
 
 const [slackId, buzzId, teamArg] = process.argv.slice(2);
 if (!slackId || !buzzId) {
-  console.error('Usage: npm run map -- <slack-channel-id> <buzz-channel-uuid> [team-id]');
+  console.error('Usage: npx slack-to-buzz-bridge map <slack-channel-id> <buzz-channel-uuid> [team-id]');
+  console.error('   (or from a checkout: npm run map -- <slack-channel-id> <buzz-channel-uuid> [team-id])');
   process.exit(1);
 }
 if (!/^[CG][A-Z0-9]+$/.test(slackId)) {
